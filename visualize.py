@@ -4,11 +4,15 @@ matplotlib.use('TkAgg')
 import h5py
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import colormaps
 import os
 import matplotlib.colors as colors
 import cv2
 from depth_reproj_eval import *
 import traceback
+from scipy.ndimage import median_filter
+# get_cmap=colormaps.get_cmap
+
 '''
 visualize_depth_maps(
     base_path='/content/your_data_folder/',
@@ -35,6 +39,13 @@ The script will display the original image alongside the four depth maps in a si
 with colorbars for each depth map. The visualization is interactive, 
 allowing you to zoom and pan each subplot independently.
 '''
+def get_stats(arr, maxval=1000):
+    return {
+        'min': np.clip(np.nanmin(arr), 1e-6, maxval),
+        'max': np.clip(np.nanmax(arr), 1e-6, maxval),
+        'num_nan': np.isnan(arr).sum(),
+        'pct_nan': np.mean(np.isnan(arr)) * 100
+    }
 
 
 def resize_image_hwc(img_hwc, target_h, target_w, interpolation=cv2.INTER_LINEAR):
@@ -95,113 +106,142 @@ def visualize_depth_maps(base_path='/content/',
             hspace=0.2, wspace=0.2)
         axes = np.empty((2, num_models + 1), dtype=object)
         axes[0,0] = fig.add_subplot(gs[:, 0]) # Top-left for left image
-        axes[1, 0] = fig.add_subplot(gs[1, 0])  # Bottom-left for right image
+        #axes[1, 0] = fig.add_subplot(gs[1, 0])  # Bottom-left for right image
 
         for i in range(1, num_models + 1):
             axes[0, i] = fig.add_subplot(gs[0, i])
-            axes[1, i] = fig.add_subplot(gs[1, i])
-
-        
+            axes[1, i] = fig.add_subplot(gs[1, i])        
 
         plt.subplots_adjust(top=0.9,hspace=0.2,wspace=0.2)
 
         base_title = base_path 
-        fig.suptitle(f'{base_title} : Image {current_idx + 1}', fontsize=10, y=0.98, color='black')
+        
+        col_clip = 400
         
         while current_idx < min_images:
+            if current_idx<=5:
+                current_idx+=1
+                continue
+            fig.suptitle(f'{base_title} : Image {current_idx }', fontsize=10, y=0.98, color='black')
             rectified_left = h5_files['left_rectified']['data'][()][current_idx].transpose(1,2,0)
             rectified_right =h5_files['right_rectified']['data'][()][current_idx].transpose(1,2,0)
             print(f"rectified_left shape: {rectified_left.shape}")
             print(f"rectified_right shape: {rectified_right.shape}")
 
             # Combine left and right images vertically in the first subplot
-            combined = np.vstack((rectified_left, 255*np.ones((200, rectified_left.shape[1], 3), dtype=np.uint8), rectified_right))
+            combined = np.vstack((rectified_left[:,col_clip:,:], 255*np.ones((200, rectified_left[:,col_clip:,:].shape[1], 3), dtype=np.uint8), rectified_right[:,:-col_clip,:]))
             axes[0, 0].imshow(cv2.cvtColor(combined, cv2.COLOR_BGR2GRAY), cmap='gray')
             axes[0, 0].set_title('Rectified Left (Top) & Right (Bottom) Images', fontsize=9)
             axes[0, 0].axis('off')
-            if axes[1, 0] is not None:
-                fig.delaxes(axes[1, 0])
+            # if axes[1, 0] is not None:
+            #     fig.delaxes(axes[1, 0])
             #axes = axes[:, 1:]
-            # Plot depth maps
+            
+            depth_data = {}
             depth_stats = {}
+            err_data = {}
+            err_stats = {}            
+
             for name in depth_paths.keys():
-                depth_data = h5_files[name]['depth'][()][current_idx] if 'depth' in h5_files[name] else h5_files[name]['data'][()][current_idx]
-                if len(depth_data.shape) == 3 and depth_data.shape[0] == 1:
-                    depth_data = depth_data.squeeze(0)
+                depth_data[name] = h5_files[name]['depth'][()][current_idx] if 'depth' in h5_files[name] else h5_files[name]['data'][()][current_idx]
+                if len(depth_data[name].shape) == 3 and depth_data[name].shape[0] == 1:
+                    depth_data[name] = depth_data[name].squeeze(0)                                
                 
-                # Calculate statistics
-                valid_data = depth_data[:,400:][~np.isnan(depth_data[:,400:])]
-                depth_stats[name] = {
-                    'min': np.clip(np.min(valid_data), 1e-6, 1000),
-                    'max': np.clip(np.max(valid_data), 1e-6, 1000),
-                    'num_nan': np.isnan(depth_data).sum(),
-                    'pct_nan': np.mean(np.isnan(depth_data)) * 100
-                }
+                rectified_left = resize_image_hwc(rectified_left, depth_data[name].shape[0], depth_data[name].shape[1])
+                rectified_right = resize_image_hwc(rectified_right, depth_data[name].shape[0], depth_data[name].shape[1])
+                X_c_left = px_to_camera(depth_data[name], Kleft)
+                x_right_2d = project_to_view(X_c_left, P2)
+
+                depth_errors = 0 #depth_projection_errors(depth_data[name], x_right_2d, Kright, P1, error_types=['depth']) #, error_types=['depth'])
+                grad_error = compute_grad_error(rectified_left)
+                error_types=['l1','ssim'] #['l1', 'l2', 'ssim']
+                err_data[name] = (depth_errors + grad_error + photometric_errors(rectified_left, rectified_right, x_right_2d, error_types=error_types))[:,col_clip:]
+                depth_data[name] = depth_data[name][:,col_clip:]
+                depth_stats[name] = get_stats(depth_data[name], maxval=3000)                
             
             # Find global min and max for consistent color scaling (excluding NaNs)
             depth_mins = [stats['min'] for stats in depth_stats.values() if not np.isnan(stats['min'])]
             depth_maxs = [stats['max'] for stats in depth_stats.values() if not np.isnan(stats['max'])]
+            err_min = np.array([err for err in err_data.values()]).min(0)
+
+            for name,err in err_data.items():                               
+                err_data[name] = cv2.bilateralFilter(median_filter(err-err_min, size=3).astype(np.float32), \
+                                                    d=7, sigmaColor=75, sigmaSpace=50)
+                err_stats[name] = get_stats(err_data[name], maxval=6000)                
+
+            err_mins = [stats['min'] for stats in err_stats.values() if not np.isnan(stats['min'])]
+            err_maxs = [stats['max'] for stats in err_stats.values() if not np.isnan(stats['max'])]
             
-            if depth_mins and depth_maxs:  # Only if we have valid data
-                vmin = max(min(depth_mins), 1e-6)
-                vmax = max(depth_maxs)
+
+            if depth_mins and depth_maxs:
+                dmin = max(min(depth_mins), 1e-6)
+                dmax = max(depth_maxs)
             else:
-                vmin, vmax = 1, 100  # Default values if no valid data
+                dmin, dmax = 1e-6, 1000  
             
-            # Use a perceptually uniform colormap with log scaling            
-            turbo_r = plt.cm.get_cmap('turbo_r')
-            # Create a new colormap that's the same as turbo_r but without the last color
+            if err_mins and err_maxs:  
+                emin = max(min(err_mins), 1e-6)
+                emax = max(err_maxs)
+            else:
+                emin, emax = 1e-6, 6000
+            
+            # Create a new colormap that's the same as turbo_r but without the last colors
+            turbo_r = plt.get_cmap('turbo_r')            
             turbo_r_colors = turbo_r(np.linspace(0, 0.8, 256))  # Stop at 0.95 instead of 1.0 to avoid black
             custom_cmap = colors.ListedColormap(turbo_r_colors)
-            n_levels = 50
-            cmap = plt.get_cmap(custom_cmap, n_levels)
+            n_levels = 50            
+            cmap1 = plt.get_cmap(custom_cmap, n_levels)
+            turbo = plt.get_cmap('turbo')            
+            turbo_colors = turbo(np.linspace(0.12, 1, 256))  # Start at 0.12 instead of 0.0 to avoid black
+            custom_cmap = colors.ListedColormap(turbo_colors)
+            cmap2 = plt.get_cmap(custom_cmap, n_levels)
             
-            for i, (name, path) in enumerate(depth_paths.items()):                                
-                depth_data = h5_files[name]['depth'][()][current_idx] if 'depth' in h5_files[name] else h5_files[name]['data'][()][current_idx]
-                rectified_left = resize_image_hwc(rectified_left, depth_data.shape[0], depth_data.shape[1])
-                rectified_right = resize_image_hwc(rectified_right, depth_data.shape[0], depth_data.shape[1])
-                X_c_left = px_to_camera(depth_data, Kleft)
-                x_right_2d = project_to_view(X_c_left, P2)
-                err1 = photometric_error_l1(rectified_left, rectified_right, x_right_2d)
-                err2 = photometric_error_ssim(rectified_left, rectified_right)
-                err_left = np.maximum(err1 + err2, 1e-6)[:,400:]
-                norm_err = colors.LogNorm(vmin=err2.min(), vmax=err2.max())
-
+            for i, (name, path) in enumerate(depth_paths.items()):                                                                
                 # Top row: depth maps
                 ax_depth = axes[0, 1+i]
-                im_depth = ax_depth.imshow(depth_data[:,400:], cmap=cmap, 
-                                        norm=colors.LogNorm(vmin=vmin, vmax=vmax), 
-                                        interpolation='nearest')
-                ax_depth.set_title(name, fontsize=9)
+                im_depth = ax_depth.imshow(depth_data[name].round(3), cmap=cmap1, 
+                                        norm=colors.LogNorm(vmin=dmin, vmax=dmax), 
+                                        interpolation='nearest')                
+                subtitle = f"{name}: \n {depth_stats[name]["min"]:.2f} - {depth_stats[name]["max"]:.2f}, #NaNs: {depth_stats[name]["num_nan"]}({depth_stats[name]["pct_nan"]:.2f}%)"
+                ax_depth.set_title(subtitle, fontsize=9)
                 cbar_depth = plt.colorbar(im_depth, ax=ax_depth, fraction=0.035, pad=0.04)                
                 ax_depth.axis('off')
                 # Set ticks for depth colorbar
                 extra_ticks = np.array([1.0, 1.5, 3.0])
-                extra_ticks = extra_ticks[(extra_ticks >= vmin) & (extra_ticks <= vmax)]
-                log_ticks = np.logspace(np.log10(vmin), np.log10(vmax), num=5)
+                extra_ticks = extra_ticks[(extra_ticks >= dmin) & (extra_ticks <= dmax)]
+                log_ticks = np.logspace(np.log10(dmin), np.log10(dmax), num=5)
                 ticks = np.unique(np.concatenate([extra_ticks, log_ticks]))
                 cbar_depth.set_ticks(ticks)
                 cbar_depth.set_ticklabels([f"{tick:.1f}" for tick in ticks])
 
                 # Bottom row: error maps
                 ax_err = axes[1, 1+i]
-                im_err = ax_err.imshow(err_left, cmap=cmap, 
-                    norm=colors.LogNorm(vmin=0.1, vmax=err_left.max()), 
+                im_err = ax_err.imshow(err_data[name].round(3), cmap=cmap2, 
+                    #norm=colors.LogNorm(vmin=0.01, vmax=emax), 
                     interpolation='nearest')
-                ax_err.set_title(name, fontsize=9)
+                subtitle = f"{name}: \n {err_stats[name]["min"]:.2f} - {err_stats[name]["max"]:.2f}, #NaNs: {err_stats[name]["num_nan"]}({err_stats[name]["pct_nan"]:.2f}%)"
+                ax_err.set_title(subtitle, fontsize=9)
                 cbar_err = plt.colorbar(im_err, ax=ax_err, fraction=0.035, pad=0.04)                
                 ax_err.axis('off')
                 
-                # Set ticks for error colorbar                
+                # Set ticks for error colorbar 
+                #log_ticks = np.logspace(np.log10(0.01), np.log10(emax), num=7)                
+                # cbar_err.set_ticks(log_ticks)
+                lin_ticks = np.linspace(0.01, emax, num=7)
+                cbar_err.set_ticks(lin_ticks)
+                cbar_err.set_ticklabels([f"{tick:.1f}" for tick in lin_ticks])         
+            
+            first_ax = axes[0,0]
+            second_ax = axes[0,1]
+            for ax in axes[:,1:].flatten():
+                if ax:
+                    ax.sharex(second_ax)
+                    ax.sharey(second_ax)
 
-                log_ticks = np.logspace(np.log10(0.1), np.log10(err_left.max()), num=5)                
-                cbar_err.set_ticks(log_ticks)
-                cbar_err.set_ticklabels([f"{tick:.1f}" for tick in log_ticks])               
-                
+            # axes[0,1].get_shared_x_axes().join(*[*axes[0,1:], *axes[1,1:]])
+            # axes[0,1].get_shared_y_axes().join(*[*axes[0,1:], *axes[1,1:]])                
+            # plt.tight_layout()            
             
-            plt.tight_layout()
-            
-            # Show the curre2t figure and wait for it to be 10losed
             plt.show(block=True)
             # plt.close('all')
             
@@ -212,17 +252,17 @@ def visualize_depth_maps(base_path='/content/',
                 hspace=0.2, wspace=0.2)
                 axes = np.empty((2, num_models + 1), dtype=object)
                 axes[0,0] = fig.add_subplot(gs[:, 0]) # Top-left for left image
-                axes[1,0] = fig.add_subplot(gs[1, 0])  # Bottom-left for right image
+                #axes[1,0] = fig.add_subplot(gs[1, 0])  # Bottom-left for right image
                 for i in range(1, num_models + 1):
                     axes[0, i] = fig.add_subplot(gs[0, i])
                     axes[1, i] = fig.add_subplot(gs[1, i])
 
-                fig.delaxes(axes[1,0])
+                #fig.delaxes(axes[1,0])
                 #axes = axes[:, 1:]
                 
                 plt.subplots_adjust(top=0.95, hspace=0.2, wspace=0.2)
                 # Update title for new figure
-                fig.suptitle(f'{base_title} : Image {current_idx + 2}', fontsize=10, y=0.98, color='black')
+                fig.suptitle(f'{base_title} : Image {current_idx + 1}', fontsize=10, y=0.98, color='black')
             
             current_idx += 1
             
