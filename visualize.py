@@ -81,10 +81,9 @@ def visualize_depth_maps(base_path='/content/',
     num_models = len(model_names)
 
     params = load_camera_params(os.path.join(base_path, params_path))
-    Kleft, Kright = params['Kleft'], params['Kright']
-    R, T = params['R'], params['T']
     P1, P2 = params['P1'], params['P2']
-
+    K, K_inv = params['K_new'], params['K_inv']
+    T, baseline, fB = params['T'], params['baseline'], params['fB']
     right_rectified_path = os.path.join(base_path, left_rectified_path.replace("left", "right"))
     
     # Open all H5 files
@@ -149,11 +148,10 @@ def visualize_depth_maps(base_path='/content/',
                 
                 rectified_left = resize_image_hwc(rectified_left, depth_data[name].shape[0], depth_data[name].shape[1])
                 rectified_right = resize_image_hwc(rectified_right, depth_data[name].shape[0], depth_data[name].shape[1])
-                X_c_left = px_to_camera(depth_data[name], Kleft)
-                x_right_2d = project_to_view(X_c_left, P2)
-
-                depth_errors = 0 #depth_projection_errors(depth_data[name], x_right_2d, Kright, P1, error_types=['depth']) #, error_types=['depth'])
-                grad_error = compute_grad_error(rectified_left)
+                X_c_left = px_to_camera(depth_data[name], K_inv)                
+                x_right_2d = project_to_view(X_c_left, P2)                
+                depth_errors = depth_projection_errors(depth_data[name], x_right_2d, K_inv, P1, T, fB, error_types=['px']) #, error_types=['depth'])
+                grad_error = 0 #compute_grad_error(rectified_left)
                 error_types=['l1','ssim'] #['l1', 'l2', 'ssim']
                 err_data[name] = (depth_errors + grad_error + photometric_errors(rectified_left, rectified_right, x_right_2d, error_types=error_types))[:,col_clip:]
                 depth_data[name] = depth_data[name][:,col_clip:]
@@ -165,7 +163,7 @@ def visualize_depth_maps(base_path='/content/',
             err_min = np.array([err for err in err_data.values()]).min(0)
 
             for name,err in err_data.items():                               
-                err_data[name] = cv2.bilateralFilter(median_filter(err-err_min, size=3).astype(np.float32), \
+                err_data[name] = cv2.bilateralFilter(median_filter(err - err_min, size=3).astype(np.float32), \
                                                     d=7, sigmaColor=75, sigmaSpace=50)
                 err_stats[name] = get_stats(err_data[name], maxval=6000)                
 
@@ -281,8 +279,8 @@ def visualize_depth_maps(base_path='/content/',
 #left_ple usage:
 
 if __name__ == '__main__':
-    # base_path = 'I:\\My Drive\\Scene-5\\f-28.0mm\\a-1.4mm\\stereodepth'
-    # rectified_path = 'I:\\My Drive\\Scene-5\\f-28.0mm\\a-1.4mm\\stereocal_results_f28.0mm_a1.4mm\\rectified\\rectified_lefts.h5'
+    # base_path = 'I:\\My Drive\\Scene-5\\f-28.0mm\\a-1.27mm\\stereocal_results_f28.0mm_a1.27mm'
+    # left_rectified_path = 'I:\\My Drive\\Scene-5\\f-28.0mm\\a-1.27mm\\stereocal_results_f28.0mm_a1.27mm\\rectified\\rectified_lefts.h5'
     base_path = 'I:\\My Drive\\Scene-6\\stereocal_results_f28mm_a22mm'
     left_rectified_path = 'I:\\My Drive\\Scene-6\\stereocal_results_f28mm_a22mm\\rectified_h5\\rectified_lefts.h5'
     depth_paths = {
@@ -290,6 +288,7 @@ if __name__ == '__main__':
         'monster': 'stereodepth\\leftview_disp_depth_monster.h5',        
         'selective': 'stereodepth\\leftview_disp_depth_selective_igev.h5',
         'defom': 'stereodepth\\leftview_disp_depth_defom.h5'
+        # 'foundation': 'stereodepth\\leftview_disp_depth_foundation.h5'
     }
     params_path = 'stereocal_params.npz'
     visualize_depth_maps(base_path, left_rectified_path, depth_paths, params_path)

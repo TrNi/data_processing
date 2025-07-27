@@ -21,12 +21,16 @@ def load_h5_images(h5_path):
 def load_camera_params(npz_path):
     """Load stereo camera parameters from .npz file."""
     data = np.load(npz_path)
-    return {
-        'Kleft': data['Kleft'], 'Kright': data['Kright'],
-        'R': data['R'], 'T': data['T'],
+    params = {        
         'P1': data['P1'], 'P2': data['P2'],
         'baseline': data['baseline'], 'fB': data['fB']
     }
+
+    params['K_new'] = params['P1'][:, :3]
+    params['K_inv'] = np.linalg.inv(params['K_new'])
+    params['T'] = np.array([params['baseline'], 0, 0])
+
+    return params
 
 def compute_grad_error(I_left, eps=1e-4):
     I_gray = cv2.cvtColor(I_left, cv2.COLOR_BGR2GRAY).astype(np.float32)
@@ -39,7 +43,7 @@ def compute_grad_error(I_left, eps=1e-4):
 
 
 
-def px_to_camera(depth_map, K, uv1=None):
+def px_to_camera(depth_map, K_inv, uv1=None):
     """
     Convert pixel coordinates to 3D camera coordinates for the same view,
     scaled to match depth.
@@ -50,8 +54,7 @@ def px_to_camera(depth_map, K, uv1=None):
         uv1 = np.stack([u, v, np.ones_like(u)], axis=-1).reshape(-1, 3)  # (H*W, 3)
 
     # Camera coordinates: X_c = Z_c * K^-1 * [u,v,1]
-    Z_c = depth_map.ravel()
-    K_inv = np.linalg.inv(K)
+    Z_c = depth_map.ravel()    
     X_c = Z_c[:,None] * (K_inv @ uv1.T).T  # (H*W, 3)
     return X_c
 
@@ -60,36 +63,36 @@ def project_to_view(X_one, P_two):
     length = X_one.shape[0]
     X_one_hom = np.hstack([X_one, np.ones((length, 1))])  # (H*W, 4)
     x_two = (P_two @ X_one_hom.T).T  # (H*W, 3)
-    u_two = x_two[:, 0] / x_two[:, 2]
-    v_two = x_two[:, 1] / x_two[:, 2]
-    return np.stack([u_two, v_two], axis=-1).reshape(length, 2)  # (H*W, 2)
+    return x_two[:, :2] / x_two[:, 2, None]    
 
 
-def depth_projection_errors(D_left, x_right, Kright, P_one, error_types=['px', 'depth']):
+def depth_projection_errors(D_left, x_right, K_inv, P_one, T, fx_B, error_types=['px', 'depth']):
     H, W = D_left.shape
+    u_l, v_l = np.meshgrid(np.arange(W), np.arange(H), indexing='xy')
+    x_left = np.stack([u_l, v_l], axis=-1).reshape(-1, 2)
 
     # Split u_R and v_R
     u_r = x_right[..., 0].astype(np.float32).reshape(H, W)
     v_r = x_right[..., 1].astype(np.float32).reshape(H, W)    
-
-    # Warp left-depth map in the same left view but at right image pixel location
-    D_left_prime_uv = cv2.remap(D_left.astype(np.float32), u_r, v_r, interpolation=cv2.INTER_LINEAR,
-                  borderMode=cv2.BORDER_CONSTANT, borderValue=0)
-
     ur_vr_1 = np.stack([u_r, v_r, np.ones_like(u_r)], axis=-1).reshape(-1, 3)
 
-    X_c_right_prime = px_to_camera(D_left_prime_uv, Kright, ur_vr_1)
+    D_right_prime = fx_B / (u_l-u_r)
+    X_c_right_prime1 = px_to_camera(D_right_prime, K_inv, ur_vr_1)
+    X_c_right_prime_left = X_c_right_prime1 - T
 
-    x_left_2d_prime = project_to_view(X_c_right_prime, P_one)
+    x_left_2d_prime = project_to_view(X_c_right_prime_left, P_one)
 
-    u_l, v_l = np.meshgrid(np.arange(W), np.arange(H), indexing='xy')
-    x_left = np.stack([u_l, v_l], axis=-1).reshape(-1, 2)
+    # Warp left-depth map in the same left view but at right image pixel location
+    # D_left_prime_uv = cv2.remap(D_left.astype(np.float32), u_r, v_r, interpolation=cv2.INTER_LINEAR,
+    #               borderMode=cv2.BORDER_CONSTANT, borderValue=0)
+    # X_c_right_prime = px_to_camera(D_left_prime_uv, K_inv, ur_vr_1)
+    # x_left_2d_prime = project_to_view(X_c_right_prime, P_one)
     
     errors = []
     if 'px' in error_types:
         errors.append(np.abs(x_left_2d_prime - x_left).sum(-1).astype(np.float32).reshape(H, W))
-    if 'depth' in error_types:
-        errors.append(np.abs(D_left - D_left_prime_uv))
+    # if 'depth' in error_types:
+    #     errors.append(np.abs(D_left - D_left_prime_uv))
 
     total_error = np.sum(errors, axis=0)
     return np.nan_to_num(total_error, nan=500, posinf=500,neginf=500)
@@ -169,7 +172,7 @@ if __name__ == "__main__":
     
     # Comvert left image regular pixel meshgrid to left camera 3D points,
     # scaled to match depth.
-    X_c_left = px_to_camera(depth_map, Kleft)
+    X_c_left = px_to_camera(depth_map, K_inv)
     
     # Project left camera 3D points to right camera 2D image view
     x_right_2d = project_to_view(X_c_left, P2)
