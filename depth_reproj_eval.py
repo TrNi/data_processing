@@ -6,7 +6,7 @@ import cv2
 from matplotlib import pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from skimage.metrics import structural_similarity as ssim
-from geometric_structure_errors import compute_grad_error, get_planarity_error
+from geometric_structure_errors import compute_grad_error, get_planarity_error, compute_grad
 
 def load_h5_images(h5_path):
     """Load images from .h5 file."""
@@ -33,47 +33,74 @@ def load_camera_params(npz_path):
 
     return params
 
-def px_to_camera(depth_map, K_inv, uv1=None):
+def get_Kinv_uv1(K_inv, H, W, uv=None):
+    """
+    Returns K_inv @ uv1.T
+    """
+    if uv is None:
+        uu, vv = np.meshgrid(np.arange(W), np.arange(H), indexing='xy')
+    else:
+        uu, vv = uv[0], uv[1]
+        
+    rays = np.stack(
+        [
+            K_inv[0,0]*uu + K_inv[0,1]*vv + K_inv[0,2],
+            K_inv[1,0]*uu + K_inv[1,1]*vv + K_inv[1,2],
+            K_inv[2,0]*uu + K_inv[2,1]*vv + K_inv[2,2],
+        ], axis=-1)
+    return rays
+
+
+def px_to_camera(depth_map, K_inv, K_inv_uv1=None, uv1=None):
     """
     Convert pixel coordinates to 3D camera coordinates for the same view,
     scaled to match depth.
     """
-    if uv1 is None:
-        H, W = depth_map.shape
-        u, v = np.meshgrid(np.arange(W), np.arange(H), indexing='xy')
-        uv1 = np.stack([u, v, np.ones_like(u)], axis=-1).reshape(-1, 3)  # (H*W, 3)
+    if K_inv_uv1 is not None:
+        X_c = depth_map[...,None] * K_inv_uv1
+        return X_c
+    else:
+        if uv1 is None:
+            H, W = depth_map.shape
+            u, v = np.meshgrid(np.arange(W), np.arange(H), indexing='xy')
+            uv1 = np.stack([u, v, np.ones_like(u)], axis=-1).reshape(-1, 3)  # (H*W, 3)
 
-    # Camera coordinates: X_c = Z_c * K^-1 * [u,v,1]
-    Z_c = depth_map.ravel()    
-    X_c = Z_c[:,None] * (K_inv @ uv1.T).T  # (H*W, 3)
-    return X_c
+        # Camera coordinates: X_c = Z_c * K^-1 * [u,v,1]
+        Z_c = depth_map.ravel()    
+        X_c = Z_c[:,None] * (K_inv @ uv1.T).T  # (H*W, 3)
+        return X_c
 
 def project_to_view(X_one, P_two):
-    """Reproject first camera frame 3D points to second camera 2D image view."""
-    length = X_one.shape[0]
-    X_one_hom = np.hstack([X_one, np.ones((length, 1))])  # (H*W, 4)
-    x_two = (P_two @ X_one_hom.T).T  # (H*W, 3)
-    return x_two[:, :2] / x_two[:, 2, None]    
+    """Reproject first camera frame 3D points to second camera 2D image view."""    
+    #x_two = X_one_hom @ P_two.T
+    x_two = X_one @ P_two[:, :3].T + P_two[:, 3] # H, W, 3
+    return x_two[..., :2] / x_two[..., 2]    
 
 
 def depth_cycle_errors(D_left, I_left, x_right, K_inv, P_one, T, fx_B):
-    H, W = D_left.shape
-    u_l, v_l = np.meshgrid(np.arange(W), np.arange(H), indexing='xy')
-    x_left = np.stack([u_l, v_l], axis=-1).reshape(-1, 2)
+    """
+    The cycle errors only produce numerical differences - in our framework, since right depth map is unavailable.
+    These O(1e-13) numerical cycle errors are unuseful. 
+    """    
+    return {}
+    # H, W = D_left.shape
+    # u_l, v_l = np.meshgrid(np.arange(W), np.arange(H), indexing='xy')
+    # x_left = np.stack([u_l, v_l], axis=-1).reshape(-1, 2)
 
-    # Split u_R and v_R
-    u_r = x_right[..., 0].astype(np.float32).reshape(H, W)
-    v_r = x_right[..., 1].astype(np.float32).reshape(H, W)    
-    ur_vr_1 = np.stack([u_r, v_r, np.ones_like(u_r)], axis=-1).reshape(-1, 3)
+    # # Split u_R and v_R
+    # u_r = x_right[..., 0].astype(np.float32).reshape(H, W)
+    # v_r = x_right[..., 1].astype(np.float32).reshape(H, W)    
+    # ur_vr_1 = np.stack([u_r, v_r, np.ones_like(u_r)], axis=-1).reshape(-1, 3)
 
-    D_right_prime = fx_B / (u_l-u_r)
-    X_c_right_prime1 = px_to_camera(D_right_prime, K_inv, ur_vr_1)
-    X_c_right_prime_left = X_c_right_prime1 - T
-    D_left_prime = X_c_right_prime_left[:,2].reshape(H, W)
+    # D_right_prime = fx_B / (u_l-u_r)
+    # X_c_right_prime1 = px_to_camera(D_right_prime, K_inv, ur_vr_1)
+    # X_c_right_prime_left = X_c_right_prime1 - T
+    # D_left_prime = X_c_right_prime_left[:,2].reshape(H, W)
 
-    x_left_2d_prime = project_to_view(X_c_right_prime_left, P_one)
-    u_l_prime = x_left_2d_prime[..., 0].astype(np.float32).reshape(H, W)
-    v_l_prime = x_left_2d_prime[..., 1].astype(np.float32).reshape(H, W)
+    # x_left_2d_prime = project_to_view(X_c_right_prime_left, P_one)
+    # u_l_prime = x_left_2d_prime[..., 0].astype(np.float32).reshape(H, W)
+    # v_l_prime = x_left_2d_prime[..., 1].astype(np.float32).reshape(H, W)
+
     # Warp left-depth map in the same left view but at right image pixel location
     # D_left_prime_uv = cv2.remap(D_left.astype(np.float32), u_r, v_r, interpolation=cv2.INTER_LINEAR,
     #               borderMode=cv2.BORDER_CONSTANT, borderValue=0)
@@ -83,16 +110,16 @@ def depth_cycle_errors(D_left, I_left, x_right, K_inv, P_one, T, fx_B):
     #     errors.append(np.abs(D_left - D_left_prime_uv))
 
     # Warp each channel using remap
-    I_left_warped = cv2.remap(I_left, u_l_prime, v_l_prime, interpolation=cv2.INTER_LINEAR,
-                  borderMode=cv2.BORDER_CONSTANT, borderValue=0)
-    errors = {}
+    # I_left_warped = cv2.remap(I_left, u_l_prime, v_l_prime, interpolation=cv2.INTER_LINEAR,
+    #               borderMode=cv2.BORDER_CONSTANT, borderValue=0)
+    # errors = {}
     
     #errors['cycle_px'] = np.nan_to_num(np.abs(x_left_2d_prime - x_left).sum(-1).astype(np.float32).reshape(H, W),nan=500, posinf=500,neginf=500)
     # errors['cycle_image_l1'] = np.nan_to_num(np.mean(np.abs(I_left_warped - I_left), axis=-1), nan=500, posinf=500,neginf=500)
     # errors['cycle_image_ssim'] = np.nan_to_num(photometric_error_ssim(I_left_warped,I_left), nan=500, posinf=500,neginf=500)
     # errors['cycle_depth_ratio'] = np.nan_to_num(np.abs(D_left - D_left_prime)/D_left, nan=500, posinf=500,neginf=500)  
     
-    return errors
+    # return {}
 
 def photometric_error_ssim(I_L, I_R_warped):
     """
@@ -140,15 +167,15 @@ def photometric_errors(I_L, I_R, x_right, error_types=['l1', 'l2', 'ssim']):
     
     return errors
 
-def get_errors(depth_left, rectified_left, rectified_right,K_inv, P1,P2, T, fB):
-    H,W = depth_left.shape      
-    X_c_left = px_to_camera(depth_left, K_inv)                
-    x_right_2d = project_to_view(X_c_left, P2)                
-    depth_errors = depth_cycle_errors(depth_left, rectified_left, x_right_2d, K_inv, P1, T, fB)
-    grad_error = compute_grad_error(depth_left, rectified_left)
-    planarity_error = get_planarity_error(X_c_left.reshape(H,W,3))
+def get_errors(depth_left, rectified_left, K_inv, K_inv_uv1, g_i, alpha, kernel): #, P1,P2, T, fB):
+    # H,W = depth_left.shape      
+    X_c_left = px_to_camera(depth_left, K_inv, K_inv_uv1)                
+    # x_right_2d = project_to_view(X_c_left, P2)
+    grad_error = compute_grad_error(depth_left, g_i, alpha, kernel)
+    planarity_error = get_planarity_error(X_c_left)
     # photo_errors = photometric_errors(rectified_left, rectified_right, x_right_2d, error_types=['l1','ssim'])
-    errors = {"grad_error":grad_error, "planarity_error":planarity_error, **depth_errors} #, **photo_errors}
+    #depth_errors = depth_cycle_errors(depth_left, rectified_left, x_right_2d, K_inv, P1, T, fB)
+    errors = {"grad_error":grad_error, "planarity_error":planarity_error} #, **depth_errors} #, **photo_errors}
     return errors
 
 

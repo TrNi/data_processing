@@ -16,7 +16,7 @@ def calculate_individual_mad_uncertainty(depth_maps):
 
     return uncertainty_maps
 
-def get_iqr_uncertainty(depth_maps):
+def get_iqr_uncertainty(depth_maps, depth_names):
     """
     IQR: Interquartile Range
     kth percentile = the value below which k% of the data falls
@@ -26,22 +26,24 @@ def get_iqr_uncertainty(depth_maps):
     High IQR: low consensus among middle 50% of the data
     Uncertainty = absolute deviation from median, normalized by IQR
     """
-    depth_names= list(depth_maps.keys())
-    num_maps = len(depth_names)
-    depth_maps = np.stack(list(depth_maps.values()), axis=0)
+    
+    num_maps = depth_maps.shape[0]
     uncertainty_maps = {}
     epsilon = 1e-4 # To prevent division by zero
 
     for k in range(num_maps):        
         other_maps = np.concatenate((depth_maps[:k, :, :], depth_maps[k+1:, :, :]), axis=0)
         ensemble_median = np.median(other_maps, axis=0)
-        
+        q0 = np.percentile(other_maps, 1, axis=0)
         q1 = np.percentile(other_maps, 25, axis=0)
         q3 = np.percentile(other_maps, 75, axis=0)
-        iqr = q3 - q1
+        
+        iqr = np.maximum(q3 - q1,q0)
+        # iqr = np.std(other_maps, axis=0)
         # Uncertainty = absolute deviation from the median, normalized by the IQR
-        uncertainty_maps[depth_names[k]] = np.abs(depth_maps[k, :, :] - ensemble_median) / (iqr + epsilon)
-
+        # uncertainty_maps[depth_names[k]] = np.log10(np.abs(depth_maps[k, :, :] - ensemble_median) / (iqr + epsilon) + 1e-6) + 6
+        umap = np.abs(depth_maps[k, :, :] - ensemble_median) / (iqr + epsilon)
+        uncertainty_maps[depth_names[k]] = np.clip(umap, 0, np.percentile(umap, 99))
     return uncertainty_maps
 
 def simple_weighted_fusion(depth_maps, uncertainty_maps):
