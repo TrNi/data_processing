@@ -74,7 +74,7 @@ def project_to_view(X_one, P_two):
     """Reproject first camera frame 3D points to second camera 2D image view."""    
     #x_two = X_one_hom @ P_two.T
     x_two = X_one @ P_two[:, :3].T + P_two[:, 3] # H, W, 3
-    return x_two[..., :2] / x_two[..., 2]    
+    return x_two[..., :2] / x_two[..., 2, None]    
 
 
 def depth_cycle_errors(D_left, I_left, x_right, K_inv, P_one, T, fx_B):
@@ -167,15 +167,15 @@ def photometric_errors(I_L, I_R, x_right, error_types=['l1', 'l2', 'ssim']):
     
     return errors
 
-def get_errors(depth_left, rectified_left, K_inv, K_inv_uv1, g_i, alpha, kernel): #, P1,P2, T, fB):
+def get_errors(depth_left, rectified_left,rectified_right, K_inv, K_inv_uv1, g_i,P2, alpha, kernel): #, P1,P2, T, fB):
     # H,W = depth_left.shape      
     X_c_left = px_to_camera(depth_left, K_inv, K_inv_uv1)                
-    # x_right_2d = project_to_view(X_c_left, P2)
+    x_right_2d = project_to_view(X_c_left, P2)
     grad_error = compute_grad_error(depth_left, g_i, alpha, kernel)
     planarity_error = get_planarity_error(X_c_left)
-    # photo_errors = photometric_errors(rectified_left, rectified_right, x_right_2d, error_types=['l1','ssim'])
+    photo_errors = photometric_errors(rectified_left, rectified_right, x_right_2d, error_types=['l1','ssim'])
     #depth_errors = depth_cycle_errors(depth_left, rectified_left, x_right_2d, K_inv, P1, T, fB)
-    errors = {"grad_error":grad_error, "planarity_error":planarity_error} #, **depth_errors} #, **photo_errors}
+    errors = {"grad_error":grad_error, "planarity_error":planarity_error, **photo_errors} #, **depth_errors} #, **photo_errors}
     return errors
 
 

@@ -129,6 +129,7 @@ def visualize_depth_maps(base_path='/content/',
         plt.subplots_adjust(top=0.97,hspace=0.1,wspace=0.1)
 
         base_title = base_path 
+        os.makedirs(os.path.join(base_path, 'ml_data'), exist_ok=True)
         
         col_clip = 400
         reuse_calculation = False
@@ -170,7 +171,9 @@ def visualize_depth_maps(base_path='/content/',
             rectified_right = resize_image_hwc(rectified_right, min_h, min_w)   
 
             # Combine left and right images vertically in the first subplot
-            combined = np.vstack((rectified_left[:,col_clip:,:], 255*np.ones((200, rectified_left[:,col_clip:,:].shape[1], 3), dtype=np.uint8), rectified_right[:,:-col_clip,:]))
+            combined = np.vstack((rectified_left[:,col_clip:,:],\
+                       255*np.ones((200, rectified_left[:,col_clip:,:].shape[1], 3), dtype=np.uint8),\
+                       rectified_right[:,:-col_clip,:]))
             axes[0, 0].imshow(cv2.cvtColor(combined, cv2.COLOR_RGB2GRAY), cmap='gray')
             axes[0, 0].set_title('Rectified Left (Top) & Right (Bottom) Images', fontsize=9)
             axes[0, 0].axis('off')
@@ -203,7 +206,7 @@ def visualize_depth_maps(base_path='/content/',
                 depth_data[name] = h5_files[name][keyname][()][current_idx]                
                 depth_data[name] = depth_data[name].squeeze()                                
                 depth_data[name] = resize_image_hwc(depth_data[name].astype(np.float32), min_h, min_w)
-                err_data[name] = get_errors(depth_data[name], rectified_left, K_inv, K_inv_uv1, g_i, alpha, kernel) #, P1, P2, T, fB)
+                err_data[name] = get_errors(depth_data[name], rectified_left, rectified_right, K_inv, K_inv_uv1, g_i,P2, alpha, kernel) #, P1, P2, T, fB)
                                 
             depth_data_arr = np.stack(list(depth_data.values()), axis=0)
             iqr_errors = get_iqr_uncertainty(depth_data_arr, depth_names)
@@ -212,9 +215,6 @@ def visualize_depth_maps(base_path='/content/',
             for i,name in enumerate(depth_names):
                 err_data[name]['icp_error'] = icp_errors['error_maps'][i+1].reshape(min_h, min_w)
                 #err_data[name]['global_error'] = global_error_maps[i]
-
-            
-            for j,name in enumerate(iqr_errors):
                 err_data[name]['iqr'] = iqr_errors[name]
                 
             error_min, error_max = defaultdict(lambda: np.inf), defaultdict(lambda: -np.inf)    
@@ -238,8 +238,8 @@ def visualize_depth_maps(base_path='/content/',
 
                 err_data[name] = err_data[name][:,col_clip:]
                 err_stats[name] = get_stats(err_data[name], maxval=500)
-                depth_data[name] = depth_data[name][:,col_clip:]
-                depth_stats[name] = get_stats(depth_data[name], maxval=100)
+                #depth_data[name] = depth_data[name][:,col_clip:]
+                depth_stats[name] = get_stats(depth_data[name][:,col_clip:], maxval=100)
             # Find global min and max for consistent color scaling (excluding NaNs)
             depth_mins = [stats['min'] for stats in depth_stats.values() if not np.isnan(stats['min'])]
             depth_maxs = [stats['max'] for stats in depth_stats.values() if not np.isnan(stats['max'])]
@@ -283,14 +283,14 @@ def visualize_depth_maps(base_path='/content/',
             weight_map = {}
             for name in depth_names:
                 weights += 1 / (err_data[name] + 1e-8)
-                fused_depth += depth_data[name] * 1 / (err_data[name] + 1e-8)
+                fused_depth += depth_data[name][:,col_clip:] * 1 / (err_data[name] + 1e-8)
                 weight_map[name] = 1 / (err_data[name] + 1e-8)
             fused_depth /= weights
             
             for i, (name, path) in enumerate(depth_paths.items()):                                                                
                 # Top row: depth maps
                 ax_depth = axes[0, 1+i]
-                im_depth = ax_depth.imshow(depth_data[name].round(3), cmap=cmap1, 
+                im_depth = ax_depth.imshow(depth_data[name][:,col_clip:].round(3), cmap=cmap1, 
                                         norm=colors.LogNorm(vmin=dmin, vmax=dmax), 
                                         interpolation='nearest')                
                 subtitle = f'{name}: \n {depth_stats[name]["5"]:.2f} - {depth_stats[name]["95"]:.2f}, #NaNs: {depth_stats[name]["num_nan"]}({depth_stats[name]["pct_nan"]:.2f}%)'
@@ -308,7 +308,7 @@ def visualize_depth_maps(base_path='/content/',
                 # Bottom row: error maps
                 if bottom_plot=="error_types":
                     if i==0:
-                        err_types = list(all_err.keys())
+                        err_types = ["grad_error", "planarity_error", "iqr", "icp_error"] #list(all_err.keys())
                         for j in range(0,len(err_types)):
                             ax_err = axes[1, j+1]
                             this_err = (all_err[err_types[j]][:,col_clip:] + 1e-8 - error_min[err_types[j]])/ (error_max[err_types[j]] - error_min[err_types[j]])
@@ -408,8 +408,25 @@ def visualize_depth_maps(base_path='/content/',
             # axes[0,1].get_shared_x_axes().join(*[*axes[0,1:], *axes[1,1:]])
             # axes[0,1].get_shared_y_axes().join(*[*axes[0,1:], *axes[1,1:]])                
             # plt.tight_layout()            
-            
-            plt.show(block=True)
+            with h5py.File(os.path.join(base_path, 'ml_data', f"img_{current_idx}.h5"), 'w') as f:
+                
+                for t,name in enumerate(depth_names):
+                    if t==0:
+                        subarr = []
+                        subarr.append(rectified_left)
+                        subarr.append(rectified_right)
+                        subarr.append(depth_data[name][...,None])
+                        for k,v in all_err.items():
+                            subarr.append(v[...,None])
+                            print(k)
+                        subarr = np.concatenate(subarr, axis=2)                                
+                        f.create_dataset('data', data=subarr, compression='gzip', compression_opts=9)
+                        f.create_dataset('total_weight', data=weight_map[name]/weights, compression='gzip', compression_opts=9)
+                        f.create_dataset('fused_depth', data=fused_depth, compression='gzip', compression_opts=9)
+
+
+
+            # plt.show(block=True)
             # plt.close('all')
             
             # Create a new figure for the next iteration if there are more images
