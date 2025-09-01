@@ -103,12 +103,12 @@ def visualize_depth_maps(base_path='/content/',
             h5_files[name] = h5py.File(os.path.join(base_path, path), 'r')
         
         
-        plot_cols = len(h5_files)
+        plot_cols = 6 #len(h5_files)
         if bottom_plot == "error_types":
-            bottom_cols = 5        
+            bottom_cols = 6 #5        
         elif bottom_plot == "total_error":
-            bottom_cols = plot_cols
-        figsize = (2.5*plot_cols, 8) 
+            bottom_cols = 6 #plot_cols
+        figsize = (2.5*plot_cols, 9) 
 
         # Get the minimum number of images across all files
         min_images = min([h5_files[f]['data'].shape[0] if 'data' in h5_files[f] else h5_files[f]['depth'].shape[0] 
@@ -116,17 +116,23 @@ def visualize_depth_maps(base_path='/content/',
 
         # Create the first figure with adjusted layout
         fig = plt.figure(figsize=figsize)
-        gs = fig.add_gridspec(2, plot_cols, height_ratios=[1, 1], hspace=0.2, wspace=0.2) #num_models + 1
-        axes = np.empty((2, plot_cols), dtype=object)
+        width_ratios = [1]*plot_cols
+        width_ratios[0] = 1.5
+        gs = fig.add_gridspec(3, plot_cols, height_ratios=[1, 1, 1], hspace=0.1, wspace=0.2, width_ratios=width_ratios) #num_models + 1
+        axes = np.full((3, plot_cols), None, dtype=object)
         axes[0,0] = fig.add_subplot(gs[:, 0]) # Top-left for left image
         #axes[1, 0] = fig.add_subplot(gs[1, 0])  # Bottom-left for right image
 
-        for i in range(1, plot_cols): #num_models + 1            
-            axes[0, i] = fig.add_subplot(gs[0, i])
-            if i<=bottom_cols:
-                axes[1, i] = fig.add_subplot(gs[1, i])        
+        for i in range(1, plot_cols): #num_models + 1   
+            if i<5:         
+                axes[0, i] = fig.add_subplot(gs[0, i])
+            if 4+i<=len(depth_paths)+1:
+                axes[1, i] = fig.add_subplot(gs[1, i])            
+            if i<=bottom_cols:                
+                axes[2, i] = fig.add_subplot(gs[2, i])        
+        axes_flat = axes.flatten()[1:]
 
-        plt.subplots_adjust(top=0.97,hspace=0.1,wspace=0.1)
+        plt.subplots_adjust(left=0.015, bottom=0.01, top=0.95, right=0.98, hspace=0.1, wspace=0.2)
 
         base_title = base_path 
         os.makedirs(os.path.join(base_path, 'ml_data'), exist_ok=True)
@@ -174,8 +180,11 @@ def visualize_depth_maps(base_path='/content/',
             combined = np.vstack((rectified_left[:,col_clip:,:],\
                        255*np.ones((200, rectified_left[:,col_clip:,:].shape[1], 3), dtype=np.uint8),\
                        rectified_right[:,:-col_clip,:]))
-            axes[0, 0].imshow(cv2.cvtColor(combined, cv2.COLOR_RGB2GRAY), cmap='gray')
-            axes[0, 0].set_title('Rectified Left (Top) & Right (Bottom) Images', fontsize=9)
+            axes[0, 0].imshow(combined)
+            #axes[0, 0].imshow(cv2.cvtColor(combined, cv2.COLOR_RGB2GRAY), cmap='gray')
+            axes[0, 0].set_title('Left Image', fontsize=9)
+            axes[0,0].text(0.5, 0.5, 'Right Image', fontsize=9, ha='center', va='center', color='black',
+                           transform=axes[0,0].transAxes, bbox=dict(facecolor='white', alpha=0.7, edgecolor='none'))
             axes[0, 0].axis('off')
             # if axes[1, 0] is not None:
             #     fig.delaxes(axes[1, 0])
@@ -209,8 +218,12 @@ def visualize_depth_maps(base_path='/content/',
                 err_data[name] = get_errors(depth_data[name], rectified_left, rectified_right, K_inv, K_inv_uv1, g_i,P2, alpha, kernel) #, P1, P2, T, fB)
                                 
             depth_data_arr = np.stack(list(depth_data.values()), axis=0)
-            iqr_errors = get_iqr_uncertainty(depth_data_arr, depth_names)
-            icp_errors, global_error_maps = get_point_cloud_errors(depth_data_arr, depth_names,  K_inv)
+            try:
+                iqr_errors = get_iqr_uncertainty(depth_data_arr, depth_names)
+                icp_errors, global_error_maps = get_point_cloud_errors(depth_data_arr, depth_names,  K_inv)
+            except Exception as e:
+                print(f"Error in get_iqr_uncertainty or get_point_cloud_errors: {e}")
+                continue
 
             for i,name in enumerate(depth_names):
                 err_data[name]['icp_error'] = icp_errors['error_maps'][i+1].reshape(min_h, min_w)
@@ -286,14 +299,17 @@ def visualize_depth_maps(base_path='/content/',
                 fused_depth += depth_data[name][:,col_clip:] * 1 / (err_data[name] + 1e-8)
                 weight_map[name] = 1 / (err_data[name] + 1e-8)
             fused_depth /= weights
+
+            ax_iter = iter(axes_flat[axes_flat!=None])
             
             for i, (name, path) in enumerate(depth_paths.items()):                                                                
                 # Top row: depth maps
-                ax_depth = axes[0, 1+i]
+                ax_depth = next(ax_iter) #axes[0, 1+i]
                 im_depth = ax_depth.imshow(depth_data[name][:,col_clip:].round(3), cmap=cmap1, 
                                         norm=colors.LogNorm(vmin=dmin, vmax=dmax), 
                                         interpolation='nearest')                
-                subtitle = f'{name}: \n {depth_stats[name]["5"]:.2f} - {depth_stats[name]["95"]:.2f}, #NaNs: {depth_stats[name]["num_nan"]}({depth_stats[name]["pct_nan"]:.2f}%)'
+                subtitle = f'{name}: \n {depth_stats[name]["5"]:.2f} - {depth_stats[name]["95"]:.2f}, '+\
+                            f'#NaNs: {depth_stats[name]["num_nan"]}({depth_stats[name]["pct_nan"]:.0f}%)'
                 ax_depth.set_title(subtitle, fontsize=9)
                 cbar_depth = plt.colorbar(im_depth, ax=ax_depth, fraction=0.035, pad=0.04)                
                 ax_depth.axis('off')
@@ -310,7 +326,7 @@ def visualize_depth_maps(base_path='/content/',
                     if i==0:
                         err_types = ["grad_error", "planarity_error", "iqr", "icp_error"] #list(all_err.keys())
                         for j in range(0,len(err_types)):
-                            ax_err = axes[1, j+1]
+                            ax_err = axes[2, j+1]
                             this_err = (all_err[err_types[j]][:,col_clip:] + 1e-8 - error_min[err_types[j]])/ (error_max[err_types[j]] - error_min[err_types[j]])
                             lo = np.percentile(this_err, 1)
                             hi = np.percentile(this_err, 99)
@@ -319,7 +335,7 @@ def visualize_depth_maps(base_path='/content/',
                             im_err = ax_err.imshow(this_err, cmap=cmap2, 
                                 # norm=colors.Normalize(vmin=emin, vmax=emax), 
                                 interpolation='nearest')
-                            subtitle = err_types[j]
+                            subtitle = f"Error component {j}"#err_types[j]
                             #f"{name}: \n {err_stats[name]["min"]:.2f} - {err_stats[name]["max"]:.2f}, #NaNs: {err_stats[name]["num_nan"]}({err_stats[name]["pct_nan"]:.2f}%)"
                             ax_err.set_title(subtitle, fontsize=9)
                             cbar_err = plt.colorbar(im_err, ax=ax_err, fraction=0.035, pad=0.04)                
@@ -329,7 +345,7 @@ def visualize_depth_maps(base_path='/content/',
                             cbar_err.set_ticks(log_ticks)
                             cbar_err.set_ticklabels([f"{tick:.1f}" for tick in log_ticks])         
                     
-                        ax_err = axes[1, len(err_types)+1]
+                        ax_err = axes[2, plot_cols-1]
                         this_err = weight_map[name]/weights#err_data[name]
                         # lo = np.percentile(this_err, 1)
                         # hi = np.percentile(this_err, 99)
@@ -354,26 +370,27 @@ def visualize_depth_maps(base_path='/content/',
                         # cbar_err.set_ticks(lin_ticks)
                         # cbar_err.set_ticklabels([f"{tick:.1f}" for tick in lin_ticks])   
                 elif bottom_plot=="total_error":
-                    ax_err = axes[1, 1+i]
-                    this_err = weight_map[name]/weights#
-                    # lo = np.percentile(this_err, 1)
-                    # hi = np.percentile(this_err, 99)
-                    # print("total error", lo,hi) #, np.percentile(this_err, 0.1), np.percentile(this_err, 99))
-                    # this_err = np.clip(this_err, lo, hi)
-                    im_err = ax_err.imshow(this_err, cmap=cmap2, 
-                        # norm=colors.Normalize(vmin=emin, vmax=emax), 
-                        interpolation='nearest')
-                    subtitle = "Total Weight" #"Total Error" # 
-                    ax_err.set_title(subtitle, fontsize=9)
-                    cbar_err = plt.colorbar(im_err, ax=ax_err, fraction=0.035, pad=0.04)                
-                    ax_err.axis('off')
-                    log_ticks = np.logspace(np.log10(this_err.min()+1e-3), np.log10(this_err.max()), num=7)
-                    #print("Total weight", [f"{tick:.3f}" for tick in log_ticks])
-                    cbar_err.set_ticks(log_ticks)
-                    cbar_err.set_ticklabels([f"{tick:.1f}" for tick in log_ticks])                 
+                    if i<plot_cols:
+                        ax_err = axes[2, 1+i]
+                        this_err = weight_map[name]/weights#
+                        # lo = np.percentile(this_err, 1)
+                        # hi = np.percentile(this_err, 99)
+                        # print("total error", lo,hi) #, np.percentile(this_err, 0.1), np.percentile(this_err, 99))
+                        # this_err = np.clip(this_err, lo, hi)
+                        im_err = ax_err.imshow(this_err, cmap=cmap2, 
+                            # norm=colors.Normalize(vmin=emin, vmax=emax), 
+                            interpolation='nearest')
+                        subtitle = "Total Weight" #"Total Error" # 
+                        ax_err.set_title(subtitle, fontsize=9)
+                        cbar_err = plt.colorbar(im_err, ax=ax_err, fraction=0.035, pad=0.04)                
+                        ax_err.axis('off')
+                        log_ticks = np.logspace(np.log10(this_err.min()+1e-3), np.log10(this_err.max()), num=7)
+                        #print("Total weight", [f"{tick:.3f}" for tick in log_ticks])
+                        cbar_err.set_ticks(log_ticks)
+                        cbar_err.set_ticklabels([f"{tick:.1f}" for tick in log_ticks])                 
             
             # Top row: fused depth map
-            ax_depth = axes[0, 1+i+1]
+            ax_depth = next(ax_iter)
 
             im_depth = ax_depth.imshow(fused_depth.round(3), cmap=cmap1, 
                                     norm=colors.LogNorm(vmin=dmin, vmax=dmax), 
@@ -386,7 +403,8 @@ def visualize_depth_maps(base_path='/content/',
                 'num_nan': np.sum(np.isnan(fused_depth)),
                 'pct_nan': np.sum(np.isnan(fused_depth)) / fused_depth.size * 100
             }
-            subtitle = f'Fused: \n {depth_stats["fused"]["5"]:.2f} - {depth_stats["fused"]["95"]:.2f}, #NaNs: {depth_stats["fused"]["num_nan"]}({depth_stats["fused"]["pct_nan"]:.2f}%)'
+            subtitle = f'Fused: \n {depth_stats["fused"]["5"]:.2f} - {depth_stats["fused"]["95"]:.2f}, '+\
+                         f'#NaNs: {depth_stats["fused"]["num_nan"]}({depth_stats["fused"]["pct_nan"]:.0f}%)'
             ax_depth.set_title(subtitle, fontsize=9)
             cbar_depth = plt.colorbar(im_depth, ax=ax_depth, fraction=0.035, pad=0.04)                
             ax_depth.axis('off')
@@ -400,7 +418,7 @@ def visualize_depth_maps(base_path='/content/',
 
             # first_ax = axes[0,0]
             second_ax = axes[0,1]
-            for ax in [*axes[0,1:plot_cols].flatten(), *axes[1,1:bottom_cols].flatten()]:
+            for ax in axes_flat:#[*axes[0,1:plot_cols].flatten(), *axes[1,1:bottom_cols].flatten()]:
                 if ax:
                     ax.sharex(second_ax)
                     ax.sharey(second_ax)
@@ -426,24 +444,28 @@ def visualize_depth_maps(base_path='/content/',
 
 
 
-            # plt.show(block=True)
-            # plt.close('all')
+            plt.show(block=True)
+            plt.close('all')
             
             # Create a new figure for the next iteration if there are more images
             if current_idx < min_images - 1:
                 fig = plt.figure(figsize=figsize)
-                gs = fig.add_gridspec(2, plot_cols, height_ratios=[1, 1], #num_models + 1
-                hspace=0.2, wspace=0.2)
-                axes = np.empty((2, plot_cols), dtype=object) #num_models + 1
+                gs = fig.add_gridspec(3, plot_cols, height_ratios=[1, 1, 1], #num_models + 1
+                hspace=0.1, wspace=0.2, width_ratios = width_ratios)
+                axes = np.empty((3, plot_cols), dtype=object) #num_models + 1
                 axes[0,0] = fig.add_subplot(gs[:, 0]) # Top-left for left image
                 #axes[1,0] = fig.add_subplot(gs[1, 0])  # Bottom-left for right image
                 for i in range(1, plot_cols):                   
-                    axes[0, i] = fig.add_subplot(gs[0, i])
-                    if i<=bottom_cols:
-                        axes[1, i] = fig.add_subplot(gs[1, i])
+                    if i<5:         
+                        axes[0, i] = fig.add_subplot(gs[0, i])
+                    if 4+i<=len(depth_paths)+1:
+                        axes[1, i] = fig.add_subplot(gs[1, i])            
+                    if i<=bottom_cols:                
+                        axes[2, i] = fig.add_subplot(gs[2, i])
                 #fig.delaxes(axes[1,0])
                 #axes = axes[:, 1:]                
-                plt.subplots_adjust(top=0.95, hspace=0.2, wspace=0.2)
+                plt.subplots_adjust(left=0.015, bottom=0.01, top=0.95, right=0.98, hspace=0.1, wspace=0.2)
+                axes_flat = axes.flatten()[1:]
                 # Update title for new figure
                 fig.suptitle(f'{base_title} : Image {current_idx + 1}', fontsize=10, y=0.98, color='black')
             
@@ -470,13 +492,27 @@ if __name__ == '__main__':
     left_rectified_path = 'I:\\My Drive\\Scene-6\\stereocal_results_f28mm_a22mm\\rectified_h5\\rectified_lefts.h5'
     depth_paths = {
         #'traditional': 'raw_depth_h5\\raw_depth_lefts.h5',
-        #'monster': 'stereodepth\\leftview_disp_depth_monster.h5',        
-        "apple_depthpro": "monodepths_rectified_left_1.5\\depthpro_depths.h5",
+        'monster': 'stereodepth\\leftview_disp_depth_monster.h5',                
         'selective': 'stereodepth\\leftview_disp_depth_selective_igev.h5',
-        #'defom': 'stereodepth\\leftview_disp_depth_defom.h5',
+        'defom': 'stereodepth\\leftview_disp_depth_defom.h5',
         'foundation': 'stereodepth\\leftview_disp_depth_foundation.h5',        
-        "depth_anythingv2": "monodepths_rectified_left_1.5\\depth_anything_v2_depths.h5"
+        "depth_anythingv2": "monodepths_rectified_left_1.5\\depth_anything_v2_depths.h5",
+        "apple_depthpro": "monodepths_rectified_left_1.5\\depthpro_depths.h5",
     }
+    anonymous = True
+    stereo_id = 0
+    mono_id = 0
+    if anonymous:
+        new_depth_paths = {}
+        for k,v in depth_paths.items():
+            if k in ["monster", "selective", "defom", "foundation"]:
+                new_depth_paths[f"stereo {stereo_id}"] = v
+                stereo_id += 1
+            else:
+                new_depth_paths[f"mono {mono_id}"] = v
+                mono_id += 1
+        depth_paths = new_depth_paths
+    
     params_path = 'stereocal_params.npz'
     visualize_depth_maps(base_path, left_rectified_path, depth_paths, params_path)
     
