@@ -141,7 +141,7 @@ def visualize_depth_maps(base_path='/content/',
         reuse_calculation = False
         min_w, min_h = np.inf, np.inf
         while current_idx < min_images:
-            if current_idx<=6:
+            if current_idx<8:
                 current_idx+=1
                 continue
             fig.suptitle(f'{base_title} : Image {current_idx }', fontsize=10, y=0.98, color='black')
@@ -320,6 +320,7 @@ def visualize_depth_maps(base_path='/content/',
                 ticks = np.unique(np.concatenate([extra_ticks, log_ticks]))
                 cbar_depth.set_ticks(ticks)
                 cbar_depth.set_ticklabels([f"{tick:.1f}" for tick in ticks])
+                cbar_depth.ax.tick_params(labelsize=7)
 
                 # Bottom row: error maps
                 if bottom_plot=="error_types":
@@ -344,7 +345,7 @@ def visualize_depth_maps(base_path='/content/',
                             print(err_types[j], [f"{tick:.3f}" for tick in log_ticks])
                             cbar_err.set_ticks(log_ticks)
                             cbar_err.set_ticklabels([f"{tick:.1f}" for tick in log_ticks])         
-                            cbar_err.ax.tick_params(labelsize=6)
+                            cbar_err.ax.tick_params(labelsize=7)
                     
                         ax_err = axes[2, plot_cols-1]
                         this_err = weight_map[name]/weights#err_data[name]
@@ -363,7 +364,7 @@ def visualize_depth_maps(base_path='/content/',
                         #print("Total weight", [f"{tick:.3f}" for tick in log_ticks])
                         cbar_err.set_ticks(log_ticks)
                         cbar_err.set_ticklabels([f"{tick:.1f}" for tick in log_ticks])  
-                        cbar_err.ax.tick_params(labelsize=6)
+                        cbar_err.ax.tick_params(labelsize=7)
                         # Set ticks for error colorbar 
                         # log_ticks = np.logspace(np.log10(0.01), np.log10(emax), num=7)                
                         # cbar_err.set_ticks(log_ticks)
@@ -390,7 +391,7 @@ def visualize_depth_maps(base_path='/content/',
                         #print("Total weight", [f"{tick:.3f}" for tick in log_ticks])
                         cbar_err.set_ticks(log_ticks)
                         cbar_err.set_ticklabels([f"{tick:.1f}" for tick in log_ticks])                 
-                        cbar_err.ax.tick_params(labelsize=6)
+                        cbar_err.ax.tick_params(labelsize=7)
             
             # Top row: fused depth map
             ax_depth = next(ax_iter)
@@ -418,7 +419,7 @@ def visualize_depth_maps(base_path='/content/',
             ticks = np.unique(np.concatenate([extra_ticks, log_ticks]))
             cbar_depth.set_ticks(ticks)
             cbar_depth.set_ticklabels([f"{tick:.1f}" for tick in ticks])
-            cbar_depth.ax.tick_params(labelsize=6)
+            cbar_depth.ax.tick_params(labelsize=7)
 
             # first_ax = axes[0,0]
             second_ax = axes[0,1]
