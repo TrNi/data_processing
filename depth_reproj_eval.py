@@ -175,7 +175,7 @@ def get_errors(depth_left, rectified_left,rectified_right, K_inv, K_inv_uv1, g_i
     planarity_error = get_planarity_error(X_c_left)
     photo_errors = photometric_errors(rectified_left, rectified_right, x_right_2d, error_types=['l1','ssim'])
     #depth_errors = depth_cycle_errors(depth_left, rectified_left, x_right_2d, K_inv, P1, T, fB)
-    errors = {"grad_error":grad_error, "planarity_error":planarity_error, **photo_errors} #, **depth_errors} #, **photo_errors}
+    errors = {"grad":grad_error, "plan":planarity_error, **photo_errors} #, **depth_errors} #, **photo_errors}
     return errors
 
 

@@ -345,12 +345,12 @@ class PointCloudConsistencyAnalyzer:
         return icp_coarse.transformation, information_icp
 
 
-def get_point_cloud_errors(depth_data, depth_names, K_inv):
+def get_point_cloud_errors(depth_data, K_inv):
     assert depth_data.shape[0]>=2, f"At least 2 depth maps are required for point cloud errors, currently supplied only {depth_data.shape[0]}"
     median_depth = np.median(depth_data, axis=0)    
 
     depth_data = np.concatenate((median_depth[None,...], depth_data), axis=0) # first map is a median depth map.
-    num_maps = len(depth_names)+1
+    num_maps = depth_data.shape[0] 
 
     pc_list = [px_to_camera(depth_data[i,...], K_inv) for i in range(num_maps)]
 
@@ -382,5 +382,8 @@ def get_point_cloud_errors(depth_data, depth_names, K_inv):
     o3d.visualization.draw_geometries(aligned_pc_np) # Aligned
     o3d.visualization.draw_geometries([pcd_consensus]) # Consensus model
     '''
+    err_maps = np.zeros((num_maps-1, depth_data.shape[1], depth_data.shape[2]))
+    for i, err_map in enumerate(list(icp_errors['error_maps'].values())):
+        err_maps[i, ...] = err_map.reshape(depth_data.shape[1], depth_data.shape[2])
 
-    return icp_errors, None #global_error_maps
+    return err_maps
