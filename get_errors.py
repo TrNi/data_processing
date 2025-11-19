@@ -296,127 +296,15 @@ class Get_errors_and_GT:
                     pickle.dump(error_data, f)
                 print(f"Saved error data to {save_path}")
                 
-                # depth_path = out_dir / f"depth_data.pkl"
-                # with open(depth_path, 'wb') as f:
-                #     pickle.dump(self.saved_depths, f)
-                # print(f"Saved depth data to {depth_path}")
-
                 pass
-                    # error_min, error_max = defaultdict(lambda: np.inf), defaultdict(lambda: -np.inf)    
-                    # for j,name in enumerate(err_data):
-                    #     if j==0:
-                    #         all_err = err_data[name]  
-                    #     for err_type in err_data[name]:
-                    #         error_min[err_type] = min(error_min[err_type],np.percentile(err_data[name][err_type][:,col_clip:], 1))
-                    #         error_max[err_type] = max(error_max[err_type],np.percentile(err_data[name][err_type][:,col_clip:], 99))                                  
-
-                    # for j,name in enumerate(err_data):
-                    #     err_data[name] = 0.3* (err_data[name]['grad_error'] + 1e-8 - error_min['grad_error'])/ (error_max['grad_error'] - error_min['grad_error'])+ \
-                    #                     0.1* (err_data[name]['planarity_error'] + 1e-8 - error_min['planarity_error'])/ (error_max['planarity_error'] - error_min['planarity_error'])+ \
-                    #                     5.5* (err_data[name]['iqr'] + 1e-8 - error_min['iqr'])/ (error_max['iqr'] - error_min['iqr'])+ \
-                    #                     4.1* (err_data[name]['icp_error'] + 1e-8 - error_min['icp_error'])/ (error_max['icp_error'] - error_min['icp_error'])
-                                        
-                    #     err_data[name] = np.maximum(err_data[name],0) / 10
-
-                    #     err_data[name] = err_data[name][:,col_clip:]
-                    #     err_stats[name] = get_stats(err_data[name], maxval=500)
-                    #     depth_stats[name] = get_stats(depth_data[name][:,col_clip:], maxval=100)
-                    
-                    # fused_depth = np.zeros((min_h, min_w - col_clip))
-                    # weights = np.zeros((min_h, min_w - col_clip))
-                    # weight_map = {}
-                    # for name in depth_names:
-                    #     weights += 1 / (err_data[name] + 1e-8)
-                    #     fused_depth += depth_data[name][:,col_clip:] * 1 / (err_data[name] + 1e-8)
-                    #     weight_map[name] = 1 / (err_data[name] + 1e-8)
-                    # fused_depth /= weights            
-                    
-                    # for i, (name, path) in enumerate(depth_paths.items()):                                                                
-                        
-                    #     if i==0:
-                    #         err_types = ["grad_error", "planarity_error", "iqr", "icp_error"] #list(all_err.keys())
-                    #         for j in range(0,len(err_types)):
-                            
-                    #             this_err = (all_err[err_types[j]][:,col_clip:] + 1e-8 - error_min[err_types[j]])/ (error_max[err_types[j]] - error_min[err_types[j]])
-                    #             lo = np.percentile(this_err, 1)
-                    #             hi = np.percentile(this_err, 99)
-                    #             print(err_types[j], lo,hi) #, np.percentile(this_err, 0.1), np.percentile(this_err, 99))
-                    #             this_err = np.clip(this_err, lo, hi)                            
-                    #             log_ticks = np.logspace(np.log10(this_err.min()), np.log10(this_err.max()), num=7)
-                    #             print(err_types[j], [f"{tick:.3f}" for tick in log_ticks])                                               
-                            
-                    #         this_err = weight_map[name]/weights#err_data[name]
-                        
-                    # # Top row: fused depth map
-                    # im_depth = fused_depth.round(3)
-                    # depth_stats['fused'] = {
-                    #     'min': fused_depth.min(),
-                    #     'max': fused_depth.max(),
-                    #     '5': np.percentile(fused_depth, 5),
-                    #     '95': np.percentile(fused_depth, 95),
-                    #     'num_nan': np.sum(np.isnan(fused_depth)),
-                    #     'pct_nan': np.sum(np.isnan(fused_depth)) / fused_depth.size * 100
-                    # }
-
-                    # with h5py.File(os.path.join(base_path, 'ml_data', f"img_{current_idx}.h5"), 'w') as f:
-                        
-                    #     for t,name in enumerate(depth_names):
-                    #         if t==0:
-                    #             subarr = []
-                    #             subarr.append(rectified_left)
-                    #             subarr.append(rectified_right)
-                    #             subarr.append(depth_data[name][...,None])
-                    #             for k,v in all_err.items():
-                    #                 subarr.append(v[...,None])
-                    #                 print(k)
-                    #             subarr = np.concatenate(subarr, axis=2)                                
-                    #             f.create_dataset('data', data=subarr, compression='gzip', compression_opts=9)
-                    #             f.create_dataset('total_weight', data=weight_map[name]/weights, compression='gzip', compression_opts=9)
-                    #             f.create_dataset('fused_depth', data=fused_depth, compression='gzip', compression_opts=9)
-                    
-                    # current_idx += 1
-                
-
 
 if __name__ == '__main__':
     # ---------- USER DATASOURCE (as provided) ----------
-    datalist = [  
+    datalist = [   
     {
-        "base": r"I:\\My Drive\\Pubdata\\Scene6_illusions",
-        "cameras": ['EOS6D_A_Left', 'EOS6D_B_Right'],
-        "configs":[            
-            {"fl":70, "F":16}, 
-            ]
-    },
-    # {
-    #     "base": r"I:\\My Drive\\Pubdata\\Scene6",
-    #     "cameras": ['EOS6D_A_Left', 'EOS6D_B_Right'],
-    #     "configs":[            
-    #         # {"fl":28, "F":22}, 
-    #         {"fl":70, "F":2.8},
-    #         ]
-    # },
-    # {
-    #     "base": r"I:\\My Drive\\Pubdata\\Scene7",
-    #     "cameras": ['EOS6D_B_Left', 'EOS6D_A_Right'],
-    #     "configs":[
-    #         # {"fl":28, "F":22}, 
-    #         {"fl":70, "F":2.8}, 
-    #         ]
-    # },
-    # {
-    #     "base": r"I:\\My Drive\\Pubdata\\Scene8",
-    #     "cameras": ['EOS6D_A_Left', 'EOS6D_B_Right'],
-    #     "configs":[
-    #         # {"fl":28, "F":22}, 
-    #         {"fl":70, "F":2.8}, 
-    #         ]
-    # },   
-    {
-        "base": r"I:\\My Drive\\Pubdata\\Scene9",
+        "base": "path_to_scene_dir",
         "cameras": ['EOS6D_B_Left', 'EOS6D_A_Right'],
-        "configs":[
-            # {"fl":28, "F":22}, 
+        "configs":[ 
             {"fl":70, "F":2.8}, 
             ]
     },
