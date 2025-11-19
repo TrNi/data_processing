@@ -5,15 +5,8 @@ from pathlib import Path
 def main():
     # Define the dataset to process
     datalist = [
-        # {
-        #     "base": r"I:\\My Drive\\Pubdata\\Scene6_illusions",
-        #     "cameras": ['EOS6D_A_Left', 'EOS6D_B_Right'],
-        #     "configs": [
-        #         {"fl": 70, "F": 16},
-        #     ]
-        # },
         {
-            "base": r"I:\\My Drive\\Pubdata\\Scene9",
+            "base": "path_to_scene_dir",
             "cameras": ['EOS6D_B_Left', 'EOS6D_A_Right'],
             "configs": [
                 {"fl":40, "F":2.8},
@@ -21,11 +14,6 @@ def main():
                 {"fl":60, "F":2.8},
                 {"fl":65, "F":2.8},
                 {"fl":70, "F":2.8},
-                # {"fl":70, "F":2.8},
-                # {"fl":70, "F":5.0},
-                # {"fl":70, "F":9.0},
-                # {"fl":70, "F":16.0},
-                # {"fl":70, "F":22.0},
             ]
         },
     ]
@@ -37,8 +25,8 @@ def main():
 
     print("Step 1: Computing errors...")
     # Initialize and run error computation
-    # error_computer = Get_errors_and_GT(datalist, MONO_MODELS, STEREO_MODELS)
-    # error_computer.save_errors()
+    error_computer = Get_errors_and_GT(datalist, MONO_MODELS, STEREO_MODELS)
+    error_computer.save_errors()
     print("Error computation complete.")
 
     print("\nStep 2: Generating visualizations...")
