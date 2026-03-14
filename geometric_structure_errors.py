@@ -4,6 +4,50 @@ import cv2
 from scipy.ndimage import uniform_filter
 
 def get_planarity_error(X_c, patch_size=7):
+    H, W, _ = X_c.shape
+    # 1) compute per‐channel local means μ_c = box_filter(X_c[...,c])    
+    mu = np.stack([
+        uniform_filter(X_c[..., c], size=patch_size, mode='nearest')
+        for c in range(3)
+    ], axis=-1).astype(np.float32)
+    # 2) compute box‐filtered second moments E[x_c * x_d] for c≤d
+    XX = X_c[..., :, None] * X_c[..., None, :]
+    E = np.stack([
+        uniform_filter(XX[..., i, j], size=patch_size, mode='nearest')
+        for i in range(3) for j in range(3)
+    ], axis=-1).reshape(H, W, 3, 3)
+    
+    # 3) form covariance matrix per‐pixel: Cov = E - μ⊗μ
+    #    Cov_{c,d} = E[x_c x_d] - μ_c μ_d
+    mu_outer = mu[..., :, None] * mu[..., None, :]
+    Cov = E - mu_outer
+
+    # 4) batched eigensolve: smallest eigenvalue at index 0
+    #    np.linalg.eigvalsh works on stacked last‐two dims
+    eigs = np.linalg.eigvalsh(Cov)        # (H, W, 3)
+    lam1 = eigs[..., 2]                   # largest
+    lam2 = eigs[..., 1]
+    lam3 = eigs[..., 0]                   # smallest
+
+    # 1. RMS orthogonal error (meters)
+    rms_orth = np.sqrt(np.clip(lam3, a_min=0.0, a_max=None))
+
+    # 2. Prel = lam3 / (lam1 + lam2 + lam3) # relative smallest/sum ratio. smaller means more planar
+    denom = lam1 + lam2 + lam3 + 1e-12
+    Prel = lam3 / denom
+
+    # 3. Pnorm = lam3 / (mean depth in patch)^2
+    # compute patch-mean depth
+    Z = X_c[..., 2]
+    Z_mean = uniform_filter(Z, size=patch_size, mode='nearest')
+    Pnorm = lam3 / (Z_mean**2 + 1e-12)
+
+    # your original return of λ3 as “planarity error”
+    planarity_error = np.clip(lam3, a_min=0, a_max=None)
+
+    return planarity_error, rms_orth, Prel, Pnorm
+'''
+def get_planarity_error(X_c, patch_size=7):
     """
     Computes a planarity error map for a given depth map using PCA.
     For each pixel in the image, take a small kxk patch and unproject it to 3D camera frame.
@@ -28,14 +72,14 @@ def get_planarity_error(X_c, patch_size=7):
         uniform_filter(X_c[..., c], size=patch_size, mode='nearest')
         for c in range(3)
     ], axis=-1).astype(np.float32)                    # shape (H, W, 3)
-
+    # 2) compute box‐filtered second moments E[x_c * x_d] for c≤d
     XX = X_c[..., :, None] * X_c[..., None, :]  # (H,W,3,3)
     E = np.stack([
         uniform_filter(XX[..., i, j], size=patch_size, mode='nearest')
         for i in range(3) for j in range(3)
     ], axis=-1).reshape(H, W, 3, 3)
 
-    # 2) compute box‐filtered second moments E[x_c * x_d] for c≤d
+    
     # E = np.zeros((X_c.shape[0], X_c.shape[1], 3, 3), dtype=np.float32)
     # for c in range(3):
     #     for d in range(c, 3):
@@ -53,7 +97,7 @@ def get_planarity_error(X_c, patch_size=7):
     #    np.linalg.eigvalsh works on stacked last‐two dims
     eigs = np.linalg.eigvalsh(Cov) # shape (H, W, 3)    
     return np.clip(eigs[..., 0], min=0)#.astype(np.float16)       # smallest eigenvalue    
-
+'''
 
 def compute_grad(image, k=7):
     # 1. Convert image to grayscale if it's a color image

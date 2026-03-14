@@ -7,6 +7,7 @@ import os
 import csv
 import seaborn as sns
 from matplotlib.ticker import FormatStrFormatter
+import gzip
 
 plt.rcParams.update({
     'font.family': 'Times New Roman',
@@ -21,6 +22,34 @@ plt.rcParams.update({
 })
 plt.rcParams['mathtext.fontset'] = 'stix'  # for math equations to also use serif fonts
 plt.rcParams['axes.titlepad'] = 0.2
+
+markers = [ 'p', 'v', '<', '>','^','s','D','o']  # distinct and compact
+
+# color scheme: cooler tones (category 1), warmer/brighter tones (category 2)
+colors = [    
+    '#e377c2',  # pink    
+    '#17becf',  # cyan
+    '#1f77b4',  # blue
+    '#7f7f7f',  # gray    
+    '#2ca02c',  # green (emphasized group starts)
+    '#d62728',  # red
+    '#ff7f0e',  # orange
+    '#9467bd',  # purple
+    
+]
+
+# linestyle pattern: simple alternation, but consistent within group
+linestyles = [
+    '--',   # baseline 1
+    '-.',  # baseline 2
+    ':',  # baseline 3
+    '--',   # baseline 4
+    '-',   # proposed 1 (same patterns reused to avoid clutter)
+    '-',  # proposed 2
+    '-',  # proposed 3
+    '-',   # proposed 4
+]
+
 def get_pretty_name(name):
     """Converts a filename string to a display-friendly name."""
     name = name.lower() # Make matching case-insensitive
@@ -316,7 +345,7 @@ def plot_error_maps(error_maps, model_names, save_dir, idx):
         return
 
     error_plotnames = {"grad": "Gradient", "plan": "Planarity", "icp": "ICP", "iqr": "IQR"}
-    error_types = ['grad', 'plan', 'icp', 'iqr']
+    error_types = ['grad', 'plan', 'icp', 'iqr', 'rms_orth', 'Prel', 'Pnorm']
 
     fig = plt.figure(figsize=(5.76, 1.2))
     gs = plt.GridSpec(1, 7, width_ratios=[1, 1, 0.001, 1, 0.001, 1, 0.001], height_ratios=[1])
@@ -557,13 +586,13 @@ def analyze_error_distributions(error_aggr, save_dir):
         error_aggr: Dictionary of error aggregates per model
         save_dir: Directory to save outputs
     """
-    error_types = ['grad', 'plan', 'icp', 'iqr']
+    error_types = ['grad',  'iqr', 'Prel', 'Pnorm'] #'plan', 'icp','rms_orth', 
     percentiles = np.arange(0, 101, 10)  # 0, 10, 20, ..., 100
     
     # Prepare data for CSV
     csv_data = []
     plan_scale = 1e6
-    headers = [[f"# Planarity error has been scaled by {plan_scale}."],
+    headers = [[f"# Planarity, RMS Orth, Preal, Pnorm errors have been scaled by {plan_scale}."],
                ['model', 'error_type'] + [f'p{p}' for p in percentiles]]
     
     # Process each model and error type
@@ -571,7 +600,7 @@ def analyze_error_distributions(error_aggr, save_dir):
         for error_type in error_types:
             # Flatten the 1000-length arrays across all images
             error_values = model_errors[error_type].flatten()
-            if error_type == "plan":                
+            if error_type in ["plan", "rms_orth", "Prel", "Pnorm"]:
                 error_values = error_values * plan_scale
             percentile_values = np.percentile(error_values, percentiles)
             
@@ -593,7 +622,7 @@ def analyze_error_distributions(error_aggr, save_dir):
     for error_type in error_types:
         plt.figure(figsize=(10, 6))
         
-        for model_name, model_errors in error_aggr.items():            
+        for i, (model_name, model_errors) in enumerate(error_aggr.items()):            
             # Get error values and sort them
             scale = plan_scale if error_type == 'plan' else 1
             error_values = model_errors[error_type].flatten()*scale            
@@ -604,10 +633,11 @@ def analyze_error_distributions(error_aggr, save_dir):
             cumulative_prob = np.arange(1, n + 1) / n
             
             # Plot CDF
-            plt.plot(sorted_values, cumulative_prob, label=model_name, linewidth=2)
+            plt.plot(sorted_values, cumulative_prob, label=model_name, linewidth=1, 
+            marker=markers[i], color=colors[i], linestyle=linestyles[i], markersize=2.0)   # smaller markers
         
         plt.grid(True, alpha=0.3)
-        plt.xlabel(f'{error_type.upper()} Error' + (' (×1e6)' if error_type == 'plan' else ''))
+        plt.xlabel(f'{error_type.upper()} Error' + (' (×1e6)' if error_type in ['plan', 'rms_orth', 'Prel', 'Pnorm'] else ''))
         plt.ylabel('Cumulative Probability')
         plt.title(f'Cumulative Distribution of {error_type.upper()} Error Across Models')
         plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
@@ -625,8 +655,12 @@ def main(datalist=None, specific_path=None):
         # Use the specific path provided
         error_data_path = specific_path
         save_dir = error_data_path.parent
-        with open(error_data_path, 'rb') as f:
-            error_data = pickle.load(f)
+        try: 
+            with gzip.open(error_data_path, 'rb') as f:
+                error_data = pickle.load(f)
+        except:
+            with open(error_data_path, 'rb') as f:
+                error_data = pickle.load(f)
 
         # depth_data_path = save_dir / "depth_data.pkl"
         # with open(depth_data_path, 'rb') as f:
@@ -634,8 +668,8 @@ def main(datalist=None, specific_path=None):
         
         # Process each image index
         # Plot error maps
-        for img_idx in range(error_data['error_maps']['MonSter']['grad'].shape[0]):
-            plot_error_maps(error_data['error_maps'], ALL_MODELS, save_dir, img_idx)
+        # for img_idx in range(error_data['error_maps']['MonSter']['grad'].shape[0]):
+        #     plot_error_maps(error_data['error_maps'], ALL_MODELS, save_dir, img_idx)
         # for img_idx, depth_data in enumerate(depth_data_arr):            
         #     # Plot depth maps
         #     # plot_depth_maps(depth_data, MONO_MODELS, STEREO_MODELS, save_dir, img_idx)

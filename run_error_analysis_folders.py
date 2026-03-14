@@ -5,17 +5,19 @@ from pathlib import Path
 def main():
     # Define the dataset folders to process
     datalist = [
-        r"E:\\pub_results\\scene9_fl40mm_F2.8\\err_GT",
-        # r"E:\\pub_results\\scene9_fl45mm_F2.8\\err_GT",
-        # r"E:\\pub_results\\scene9_fl60mm_F2.8\\err_GT",
-        # r"E:\\pub_results\\scene9_fl65mm_F2.8\\err_GT",
+        # "E:\\pub_results\\scene9_fl28mm_F2.8\\err_GT",
+        # "E:\\pub_results\\scene9_fl32mm_F2.8\\err_GT",
+        # "E:\\pub_results\\scene9_fl36mm_F2.8\\err_GT",
+        # "E:\\pub_results\\scene9_fl40mm_F2.8\\err_GT",
+        # "E:\\pub_results\\scene9_fl45mm_F2.8\\err_GT",
+        # "E:\\pub_results\\scene9_fl60mm_F2.8\\err_GT",
+        # "E:\\pub_results\\scene9_fl65mm_F2.8\\err_GT",
+        # "E:\\pub_results\\scene9_fl70mm_F2.8\\err_GT",
         # r"E:\\pub_results\\scene9_fl70mm_F2.8\\err_GT",
-
-        # r"E:\\pub_results\\scene9_fl70mm_F2.8\\err_GT",
-        # r"E:\\pub_results\\scene9_fl70mm_F5.0\\err_GT",
-        # r"E:\\pub_results\\scene9_fl70mm_F9.0\\err_GT",
-        # r"E:\\pub_results\\scene9_fl70mm_F16.0\\err_GT",
-        # r"E:\\pub_results\\scene9_fl70mm_F22.0\\err_GT",
+        "E:\\pub_results\\scene9_fl70mm_F5.0\\err_GT",
+        # "E:\\pub_results\\scene9_fl70mm_F9.0\\err_GT",
+        # "E:\\pub_results\\scene9_fl70mm_F16.0\\err_GT",
+        # "E:\\pub_results\\scene9_fl70mm_F22.0\\err_GT",
         # Add more folder paths as needed
     ]
 

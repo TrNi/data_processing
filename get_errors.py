@@ -16,7 +16,7 @@ from collections import defaultdict
 from point_cloud_opt import get_point_cloud_errors
 from geometric_structure_errors import compute_grad_error, get_planarity_error, compute_grad
 from pathlib import Path
-import pickle
+import pickle, gzip
 
 RECT_LEFT_KEY = 'rectified_lefts'
 RECT_RIGHT_KEY = 'rectified_rights'
@@ -118,6 +118,7 @@ class Get_errors_and_GT:
         F = float(cfg['F'])
         fl_folder = f"fl_{int(fl)}mm"
         F_folder = f"F{F:.1f}"
+        self.fl_folder, self.F_folder = fl_folder, F_folder
         # rectified dir paths
         self.left_rectified_dir = base / left_cam / fl_folder / "inference" / F_folder / "rectified"
         self.right_rectified_dir = base / right_cam / fl_folder / "inference" / F_folder / "rectified"
@@ -202,7 +203,7 @@ class Get_errors_and_GT:
         self.depth_titles = depth_titles
         self.depth_paths = depth_paths
 
-    def save_errors(self):
+    def save_errors(self, out_root=None):
         
         for entry in self.datalist:
             base = Path(entry['base'])
@@ -218,9 +219,12 @@ class Get_errors_and_GT:
                 
                 # Get the minimum number of images across all files
                 min_images = min([d.shape[0] for d in self.depth_arrays])           
-
-                out_dir = self.left_rectified_dir.parent / "err_GT" 
-                os.makedirs(out_dir, exist_ok=True) 
+                if out_root is not None:
+                    out_dir = Path(out_root) / f"{base.name.lower()}_{self.fl_folder.replace('_', '')}_{self.F_folder.replace('_', '')}" / "err_GT" 
+                    os.makedirs(out_dir, exist_ok=True) 
+                else:
+                    out_dir = self.left_rectified_dir.parent / "err_GT" 
+                    os.makedirs(out_dir, exist_ok=True) 
                 
                 # Initialize variables            
                 num_models = len(self.depth_titles)
@@ -243,7 +247,7 @@ class Get_errors_and_GT:
                 self.right_rects = resize_batch_nchw(self.right_rects, min_h, min_w)                   
                 self.error_maps = {}
                 self.error_aggr = {}
-                error_types = ['grad', 'plan', 'icp', 'iqr']
+                error_types = ['grad', 'plan',  'rms_orth', 'Prel', 'Pnorm', 'icp', 'iqr']
                 aggr_points = 20000
 
                 for i,(name,arr) in enumerate(zip(self.depth_titles, self.depth_arrays)):
@@ -268,23 +272,23 @@ class Get_errors_and_GT:
                     
                     try:
                         iqr_errors = get_iqr_uncertainty(depth_data_arr)
-                        icp_errors = get_point_cloud_errors(depth_data_arr, K_inv)
+                        # icp_errors = get_point_cloud_errors(depth_data_arr, K_inv)
                     except Exception as e:
                         print(f"Error in get_iqr_uncertainty or get_point_cloud_errors: {e}")
                         continue
 
                     for i,name in enumerate(self.depth_titles):                    
                         err_data = get_errors(self.depth_arrays[i][current_idx], rectified_left, rectified_right, K_inv, K_inv_uv1, g_i,P2, alpha, kernel) 
-                        for k in ["grad", "plan"]:
+                        for k in ["grad", "plan", "rms_orth", "Prel", "Pnorm"]:
                             self.error_maps[name][k][current_idx] = err_data[k]
                             self.error_aggr[name][k][current_idx] = sorted_k(err_data[k], k=aggr_points)
                         
-                        self.error_maps[name]["icp"][current_idx] = icp_errors[i]
-                        self.error_aggr[name]["icp"][current_idx] = sorted_k(icp_errors[i], k=aggr_points)
+                        # self.error_maps[name]["icp"][current_idx] = icp_errors[i]
+                        # self.error_aggr[name]["icp"][current_idx] = sorted_k(icp_errors[i], k=aggr_points)
                         self.error_maps[name]["iqr"][current_idx] = iqr_errors[i]
                         self.error_aggr[name]["iqr"][current_idx] = sorted_k(iqr_errors[i], k=aggr_points)
                     
-                    self.saved_depths.append(depth_data_arr)
+                    #self.saved_depths.append(depth_data_arr)
                     
                 # Save error maps and aggregated errors for this configuration
                 save_path = out_dir / f"error_data.pkl"
@@ -292,102 +296,32 @@ class Get_errors_and_GT:
                     'error_maps': self.error_maps,
                     'error_aggr': self.error_aggr,                    
                 }
-                with open(save_path, 'wb') as f:
-                    pickle.dump(error_data, f)
+                with gzip.open(save_path, 'wb') as f:
+                    pickle.dump(error_data, f, protocol=pickle.HIGHEST_PROTOCOL)
                 print(f"Saved error data to {save_path}")
-                
+                del error_data
+                del self.error_maps
+                del self.error_aggr
+                del self.saved_depths
                 # depth_path = out_dir / f"depth_data.pkl"
                 # with open(depth_path, 'wb') as f:
                 #     pickle.dump(self.saved_depths, f)
                 # print(f"Saved depth data to {depth_path}")
 
-                pass
-                    # error_min, error_max = defaultdict(lambda: np.inf), defaultdict(lambda: -np.inf)    
-                    # for j,name in enumerate(err_data):
-                    #     if j==0:
-                    #         all_err = err_data[name]  
-                    #     for err_type in err_data[name]:
-                    #         error_min[err_type] = min(error_min[err_type],np.percentile(err_data[name][err_type][:,col_clip:], 1))
-                    #         error_max[err_type] = max(error_max[err_type],np.percentile(err_data[name][err_type][:,col_clip:], 99))                                  
-
-                    # for j,name in enumerate(err_data):
-                    #     err_data[name] = 0.3* (err_data[name]['grad_error'] + 1e-8 - error_min['grad_error'])/ (error_max['grad_error'] - error_min['grad_error'])+ \
-                    #                     0.1* (err_data[name]['planarity_error'] + 1e-8 - error_min['planarity_error'])/ (error_max['planarity_error'] - error_min['planarity_error'])+ \
-                    #                     5.5* (err_data[name]['iqr'] + 1e-8 - error_min['iqr'])/ (error_max['iqr'] - error_min['iqr'])+ \
-                    #                     4.1* (err_data[name]['icp_error'] + 1e-8 - error_min['icp_error'])/ (error_max['icp_error'] - error_min['icp_error'])
-                                        
-                    #     err_data[name] = np.maximum(err_data[name],0) / 10
-
-                    #     err_data[name] = err_data[name][:,col_clip:]
-                    #     err_stats[name] = get_stats(err_data[name], maxval=500)
-                    #     depth_stats[name] = get_stats(depth_data[name][:,col_clip:], maxval=100)
-                    
-                    # fused_depth = np.zeros((min_h, min_w - col_clip))
-                    # weights = np.zeros((min_h, min_w - col_clip))
-                    # weight_map = {}
-                    # for name in depth_names:
-                    #     weights += 1 / (err_data[name] + 1e-8)
-                    #     fused_depth += depth_data[name][:,col_clip:] * 1 / (err_data[name] + 1e-8)
-                    #     weight_map[name] = 1 / (err_data[name] + 1e-8)
-                    # fused_depth /= weights            
-                    
-                    # for i, (name, path) in enumerate(depth_paths.items()):                                                                
-                        
-                    #     if i==0:
-                    #         err_types = ["grad_error", "planarity_error", "iqr", "icp_error"] #list(all_err.keys())
-                    #         for j in range(0,len(err_types)):
-                            
-                    #             this_err = (all_err[err_types[j]][:,col_clip:] + 1e-8 - error_min[err_types[j]])/ (error_max[err_types[j]] - error_min[err_types[j]])
-                    #             lo = np.percentile(this_err, 1)
-                    #             hi = np.percentile(this_err, 99)
-                    #             print(err_types[j], lo,hi) #, np.percentile(this_err, 0.1), np.percentile(this_err, 99))
-                    #             this_err = np.clip(this_err, lo, hi)                            
-                    #             log_ticks = np.logspace(np.log10(this_err.min()), np.log10(this_err.max()), num=7)
-                    #             print(err_types[j], [f"{tick:.3f}" for tick in log_ticks])                                               
-                            
-                    #         this_err = weight_map[name]/weights#err_data[name]
-                        
-                    # # Top row: fused depth map
-                    # im_depth = fused_depth.round(3)
-                    # depth_stats['fused'] = {
-                    #     'min': fused_depth.min(),
-                    #     'max': fused_depth.max(),
-                    #     '5': np.percentile(fused_depth, 5),
-                    #     '95': np.percentile(fused_depth, 95),
-                    #     'num_nan': np.sum(np.isnan(fused_depth)),
-                    #     'pct_nan': np.sum(np.isnan(fused_depth)) / fused_depth.size * 100
-                    # }
-
-                    # with h5py.File(os.path.join(base_path, 'ml_data', f"img_{current_idx}.h5"), 'w') as f:
-                        
-                    #     for t,name in enumerate(depth_names):
-                    #         if t==0:
-                    #             subarr = []
-                    #             subarr.append(rectified_left)
-                    #             subarr.append(rectified_right)
-                    #             subarr.append(depth_data[name][...,None])
-                    #             for k,v in all_err.items():
-                    #                 subarr.append(v[...,None])
-                    #                 print(k)
-                    #             subarr = np.concatenate(subarr, axis=2)                                
-                    #             f.create_dataset('data', data=subarr, compression='gzip', compression_opts=9)
-                    #             f.create_dataset('total_weight', data=weight_map[name]/weights, compression='gzip', compression_opts=9)
-                    #             f.create_dataset('fused_depth', data=fused_depth, compression='gzip', compression_opts=9)
-                    
-                    # current_idx += 1
+                pass                  
                 
 
 
 if __name__ == '__main__':
     # ---------- USER DATASOURCE (as provided) ----------
     datalist = [  
-    {
-        "base": r"I:\\My Drive\\Pubdata\\Scene6_illusions",
-        "cameras": ['EOS6D_A_Left', 'EOS6D_B_Right'],
-        "configs":[            
-            {"fl":70, "F":16}, 
-            ]
-    },
+    # {
+    #     "base": r"I:\\My Drive\\Pubdata\\Scene6_illusions",
+    #     "cameras": ['EOS6D_A_Left', 'EOS6D_B_Right'],
+    #     "configs":[            
+    #         {"fl":70, "F":16}, 
+    #         ]
+    # },
     # {
     #     "base": r"I:\\My Drive\\Pubdata\\Scene6",
     #     "cameras": ['EOS6D_A_Left', 'EOS6D_B_Right'],
@@ -416,8 +350,21 @@ if __name__ == '__main__':
         "base": r"I:\\My Drive\\Pubdata\\Scene9",
         "cameras": ['EOS6D_B_Left', 'EOS6D_A_Right'],
         "configs":[
+            #{"fl":70, "F":5.0}, 
+            #{"fl":70, "F":9.0},
+            {"fl":70, "F":16.0}, 
+            {"fl":70, "F":22.0},
+            {"fl":70, "F":9.0}, 
             # {"fl":28, "F":22}, 
-            {"fl":70, "F":2.8}, 
+            # {"fl":32, "F":2.8}, 
+            # {"fl":36, "F":2.8}, 
+            # {"fl":40, "F":2.8}, 
+            # {"fl":45, "F":2.8}, 
+            # {"fl":50, "F":2.8}, 
+            # {"fl":55, "F":2.8}, 
+            # {"fl":60, "F":2.8}, 
+            # {"fl":65, "F":2.8}, 
+            # {"fl":70, "F":2.8}, 
             ]
     },
     ]
@@ -426,5 +373,5 @@ if __name__ == '__main__':
     STEREO_MODELS = ['monster', 'foundation', 'defom', 'selective']
     
     GEGT = Get_errors_and_GT(datalist, MONO_MODELS, STEREO_MODELS)
-    GEGT.save_errors()
+    GEGT.save_errors(out_root = "E:\\pub_results")
     

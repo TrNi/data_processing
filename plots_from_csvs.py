@@ -17,15 +17,19 @@ plt.rcParams.update({
 
 plot_type = "focal_lengths"
 # plot_type = "apertures"
-outdir = "H:\\My Drive\\Research_collabs\\N-V-D Research Collab\\CVPR_visuals"
+outdir = "H:\\My Drive\\Research_collabs\\MODEST Research Collab\\CVPR_visuals"
 # Example input: dict with dataset name -> csv file path
 csv_dict = {
     "focal_lengths" : {
-        "data": {"fl40": "E:\\pub_results\\scene9_fl40mm_F2.8\\err_GT\\error_percentiles.csv",
-        "fl45": "E:\\pub_results\\scene9_fl45mm_F2.8\\err_GT\\error_percentiles.csv",
-        "fl60": "E:\\pub_results\\scene9_fl60mm_F2.8\\err_GT\\error_percentiles.csv",
-        "fl65": "E:\\pub_results\\scene9_fl65mm_F2.8\\err_GT\\error_percentiles.csv",
-        "fl70": "E:\\pub_results\\scene9_fl70mm_F2.8\\err_GT\\error_percentiles.csv",
+        "data": {
+            "fl28": "E:\\pub_results\\scene9_fl28mm_F2.8\\err_GT\\error_percentiles.csv",
+            "fl32": "E:\\pub_results\\scene9_fl32mm_F2.8\\err_GT\\error_percentiles.csv",
+            "fl36": "E:\\pub_results\\scene9_fl36mm_F2.8\\err_GT\\error_percentiles.csv",
+            "fl40": "E:\\pub_results\\scene9_fl40mm_F2.8\\err_GT\\error_percentiles.csv",
+            "fl45": "E:\\pub_results\\scene9_fl45mm_F2.8\\err_GT\\error_percentiles.csv",
+            "fl60": "E:\\pub_results\\scene9_fl60mm_F2.8\\err_GT\\error_percentiles.csv",
+            "fl65": "E:\\pub_results\\scene9_fl65mm_F2.8\\err_GT\\error_percentiles.csv",
+            "fl70": "E:\\pub_results\\scene9_fl70mm_F2.8\\err_GT\\error_percentiles.csv",
         },
         "titlesuf" : "Error vs Focal Lengths for constant aperture F2.8",
         "xlabel" : "Focal Length (mm)"
@@ -79,8 +83,12 @@ linestyles = [
 ]
 
 # error types
-error_types = ["grad", "plan", "icp", "iqr"]
-error_plotnames = {"grad": "Gradient", "plan": "Planarity", "icp": "ICP", "iqr": "IQR"}
+error_types = ["grad", "plan", "icp", "iqr", "rms_orth"]
+plot_error_types = ["iqr", "grad", "Prel", "Pnorm"]
+error_plotnames = {"grad": "Gradient", "plan": "Planarity", 
+                    "icp": "ICP", "iqr": "IQR", 
+                    "rms_orth": "RMS Orthogonality", 
+                    "Prel": "P_rel", "Pnorm": "P_norm"}
 model_plotnames = {    
     "Depth Pro": "m:DepthPro",
     "Metric3D V2": "m:Metric3D",
@@ -120,7 +128,7 @@ legend_lines = []
 legend_labels = []
 
 # Plot focal length data (top row)
-for idx, error_type in enumerate(error_types):
+for idx, error_type in enumerate(plot_error_types):
     ax = axes_focal[idx]
     x_labels = list(csv_dict["focal_lengths"]["data"].keys())
     x_pos = np.arange(len(x_labels))
@@ -130,8 +138,8 @@ for idx, error_type in enumerate(error_types):
         for key in x_labels:
             df = dataframes["focal_lengths"][key]
             val = df[(df['model'] == model) & (df['error_type'] == error_type)][percentile].values[0]
-            if error_type == "plan":
-                val = val
+            if error_type == "Prel":
+                val = val/1e4
             y_values.append(val)
         
         line = ax.plot(x_pos, y_values, marker=markers[i], color=colors[i], 
@@ -144,17 +152,25 @@ for idx, error_type in enumerate(error_types):
     ax.set_xticklabels(x_labels, rotation=0)
     ax.grid(True, alpha=0.3)
     title_prefix = "Median " if percentile == "p50" else "" #else f"{percentile.replace('p', '')}%ile "
-    title_suffix = "Error (x1e6)" if error_type == "plan" else "Error"
-    ax.set_title(f"{title_prefix}{error_plotnames[error_type]} {title_suffix}")
+    if error_type == "Prel":
+        title_suffix = " (x1e4)"
+        ax.set_title(f"{title_prefix}{'Relative Planarity Magnitude'}{title_suffix}")
+    elif error_type == "Pnorm":
+        title_suffix = " (x1e6)"
+        ax.set_title(f"{title_prefix}{'Scale-normalized Planarity Deviation'}{title_suffix}")
+    else:
+        title_suffix = " Error"
+        ax.set_title(f"{title_prefix}{error_plotnames[error_type]}{title_suffix}")
+
     if idx == 0:  # Only add y-label to leftmost plots
-        ax.set_ylabel("Error")
+        ax.set_ylabel("Magnitude")
     ax.set_xlabel(csv_dict["focal_lengths"]["xlabel"])
     ax.tick_params(pad=0.2)
     ax.xaxis.labelpad = 0.1
     ax.yaxis.labelpad = 0.16
 
 # Plot aperture data (bottom row)
-for idx, error_type in enumerate(error_types):
+for idx, error_type in enumerate(plot_error_types):
     ax = axes_aperture[idx]
     x_labels = list(csv_dict["apertures"]["data"].keys())
     x_pos = np.arange(len(x_labels))
@@ -164,8 +180,8 @@ for idx, error_type in enumerate(error_types):
         for key in x_labels:
             df = dataframes["apertures"][key]
             val = df[(df['model'] == model) & (df['error_type'] == error_type)][percentile].values[0]
-            if error_type == "plan":
-                val = val
+            if error_type == "Prel":
+                val = val/1e4
             y_values.append(val)
         
         ax.plot(x_pos, y_values, marker=markers[i], color=colors[i], 
@@ -175,7 +191,7 @@ for idx, error_type in enumerate(error_types):
     ax.set_xticklabels(x_labels, rotation=0)
     ax.grid(True, alpha=0.3)
     if idx == 0:  # Only add y-label to leftmost plots
-        ax.set_ylabel("Error")
+        ax.set_ylabel("Magnitude")
     ax.set_xlabel(csv_dict["apertures"]["xlabel"])
     ax.tick_params(pad=0.2)
     ax.xaxis.labelpad = 0.1
@@ -226,7 +242,7 @@ plt.subplots_adjust(top=0.999, bottom=0.001, left=0.0, right=1.0, hspace=0.001, 
 
 # Save plot data to CSV for both focal lengths and apertures
 for plot_type in ["focal_lengths", "apertures"]:
-    for error_type in error_types:
+    for error_type in plot_error_types:
         csv_data = {}
         for i, model in enumerate(models):
             y_values = []
@@ -246,6 +262,6 @@ for plot_type in ["focal_lengths", "apertures"]:
 
 # Save in multiple formats with high DPI
 plot_base_path = csv_base_path.replace("_data.csv", "_combined") 
-plt.savefig(plot_base_path + ".png", dpi=300, bbox_inches='tight')
+plt.savefig(plot_base_path + ".png", dpi=600, bbox_inches='tight')
 plt.savefig(plot_base_path + ".svg", format='svg', bbox_inches='tight')
-plt.savefig(plot_base_path + ".pdf", format='pdf', dpi=300, bbox_inches='tight')
+plt.savefig(plot_base_path + ".pdf", format='pdf', dpi=900, bbox_inches='tight')

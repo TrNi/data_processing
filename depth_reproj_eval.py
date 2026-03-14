@@ -172,10 +172,10 @@ def get_errors(depth_left, rectified_left,rectified_right, K_inv, K_inv_uv1, g_i
     X_c_left = px_to_camera(depth_left, K_inv, K_inv_uv1)                
     x_right_2d = project_to_view(X_c_left, P2)
     grad_error = compute_grad_error(depth_left, g_i, alpha, kernel)
-    planarity_error = get_planarity_error(X_c_left)
+    planarity_error, rms_orth, Prel, Pnorm = get_planarity_error(X_c_left)
     photo_errors = photometric_errors(rectified_left, rectified_right, x_right_2d, error_types=['l1','ssim'])
     #depth_errors = depth_cycle_errors(depth_left, rectified_left, x_right_2d, K_inv, P1, T, fB)
-    errors = {"grad":grad_error, "plan":planarity_error, **photo_errors} #, **depth_errors} #, **photo_errors}
+    errors = {"grad":grad_error, "plan":planarity_error, "rms_orth":rms_orth, "Prel":Prel, "Pnorm":Pnorm, **photo_errors} #, **depth_errors} #, **photo_errors}
     return errors
 
 

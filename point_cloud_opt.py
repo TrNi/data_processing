@@ -357,7 +357,7 @@ def get_point_cloud_errors(depth_data, K_inv):
     analyzer = PointCloudConsistencyAnalyzer(pc_list)
 
     print("\n--- Running Pairwise ICP Analysis ---")
-    icp_errors = analyzer.compute_pairwise_icp_error(reference_idx=0, voxel_size=0.01)
+    icp_errors = analyzer.compute_pairwise_icp_error(reference_idx=0, voxel_size=0.025)
 
     print("\n ICP Errors (Fitness and Inlier RMSE) w.r.t. median depth point cloud:")
     for i, errors in icp_errors["aggr_errors"].items():
