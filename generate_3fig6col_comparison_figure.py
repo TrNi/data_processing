@@ -1,5 +1,5 @@
 '''
- python .\generate_3fig6col_comparison_figure.py "I:\My Drive\DOF_benchmarking\inference\fl_70\crop_coords_4701.txt" "I:\My Drive\DOF_benchmarking\inference\Scene8_6D_B_Right_fl70\crop_coords_0.txt" "I:\My Drive\DOF_benchmarking\inference\fl_70\crop_coords_4620.txt"
+ python .\generate_3fig6col_comparison_figure.py "I:\My Drive\DOF_benchmarking\inference\fl_70\crop_coords_4701.txt" "I:\My Drive\DOF_benchmarking\inference\Scene8_6D_B_Right_fl70\crop_coords_0.txt" "I:\My Drive\DOF_benchmarking\inference\fl_70\crop_coords_4620.txt" --output "H:\My Drive\Research_collabs\MODEST Research Collab\ECCV_Visuals\dof_new\3col.PNG"
 '''
 
 import os
