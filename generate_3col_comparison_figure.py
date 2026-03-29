@@ -261,7 +261,7 @@ def generate_comparison_figure(text_files, output_path):
                 ax_crops.axis('off')
     
     # Save figure with high quality
-    plt.savefig(output_path, dpi=900, bbox_inches='tight', pad_inches=0.005)
+    plt.savefig(output_path, dpi=600, bbox_inches='tight', pad_inches=0.005)
     print(f"Figure saved to: {output_path}")
     plt.close()
 

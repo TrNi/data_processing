@@ -153,6 +153,8 @@ def process_image(img_path: Path, savedir: Path, log_path: Path) -> None:
 
         cropped = img.crop((x1, y1, x2, y2))
         out_path = savedir / img_path.name
+        if out_path.exists():
+            out_path = savedir / f"{img_path.stem}_crop{out_path.suffix}"
         cropped.save(str(out_path))
         print(f"  [SAVED] {out_path}   W={w}  H={h}  H/W={hw:.4f}  W/H={wh:.4f}")
 
@@ -209,7 +211,7 @@ def main() -> None:
     print(f"Crop log: {log_path}\n")
 
     for i, img_path in enumerate(image_paths):
-        print(f"[{i + 1}/{len(image_paths)}] {img_path}")
+        print(f"[{i + 1}/{len(image_paths)}] {img_path}")        
         process_image(img_path, savedir, log_path)
 
     print("\nAll images processed.")

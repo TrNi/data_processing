@@ -78,36 +78,34 @@ def cat_csvs_as_text(csv1, csv2, output_text):
 
 
 if __name__ == "__main__":
-    # Hardcode your inputs here
-    # Example format:
-    # dir_prefix_list = [
-    #     [r"C:\path\to\dir1", "prefix1"],
-    #     [r"C:\path\to\dir2", "prefix2"],
-    #     [r"C:\path\to\dir3", "prefix3"],
-    # ]
+    # Specify your inputs here
     
     dir_prefix_list = [                
-        [r"I:\My Drive\DOF_benchmarking\inference\GT_fl70_F2.8", "https://f004.backblazeb2.com/file/dof-mos/GT_fl70_F2.8"],
-        [r"I:\My Drive\DOF_benchmarking\inference\bokehdiff\cropped", "https://f004.backblazeb2.com/file/dof-mos/bokehdiff"],
-        [r"I:\My Drive\DOF_benchmarking\inference\Bokehme_fl70_scale20_K40", "https://f004.backblazeb2.com/file/dof-mos/bokehme"],
-        [r"I:\My Drive\DOF_benchmarking\inference\Drbokeh_fl70_K25_fp0.25", "https://f004.backblazeb2.com/file/dof-mos/drbokeh"],
-        [r"I:\My Drive\DOF_benchmarking\inference\Bokehliciouslg_intp_fl70", "https://f004.backblazeb2.com/file/dof-mos/bokehlicious"],
+        [r"I:\My Drive\DOF_benchmarking\inference\fl_70\F2.8", "https://f004.backblazeb2.com/file/dof-mos/GT_fl70_F2.8"],
+        [r"I:\My Drive\DOF_benchmarking\inference\fl_70\bokehlicious_F2.8_intp", "https://f004.backblazeb2.com/file/dof-mos/bokehlicious"],
+        [r"I:\My Drive\DOF_benchmarking\inference\fl_70\Bokehme_scale20_K40", "https://f004.backblazeb2.com/file/dof-mos/bokehme"],
+        [r"I:\My Drive\DOF_benchmarking\inference\fl_70\Drbokeh_K25_fp.25", "https://f004.backblazeb2.com/file/dof-mos/drbokeh"],        
+        [r"I:\My Drive\DOF_benchmarking\inference\fl_70\bokehdiff_fp.4K25_0312\demo", "https://f004.backblazeb2.com/file/dof-mos/bokehdiff_fp.4K25"],
+        [r"I:\My Drive\DOF_benchmarking\inference\fl_70\bokehlicious_F4.5_intp", "https://f004.backblazeb2.com/file/dof-mos/bokehlicious_F4.5"],
+        
     ]
     
-    output_csv1 = "I:\My Drive\DOF_benchmarking\inference\images_used.csv"
+    output_csv1 = r"I:\My Drive\DOF_benchmarking\inference\fl_70\images_used_survey2.csv"
     
     create_csv_from_directories(dir_prefix_list, output_csv1)
 
     dir_prefix_list = [                
-        [r"I:\My Drive\DOF_benchmarking\inference\GT_fl70_F2.8\subcropped", "https://f004.backblazeb2.com/file/dof-mos/GT_fl70_F2.8"],
-        [r"I:\My Drive\DOF_benchmarking\inference\bokehdiff\subcropped", "https://f004.backblazeb2.com/file/dof-mos/bokehdiff"],
-        [r"I:\My Drive\DOF_benchmarking\inference\Bokehme_fl70_scale20_K40\subcropped", "https://f004.backblazeb2.com/file/dof-mos/bokehme"],
-        [r"I:\My Drive\DOF_benchmarking\inference\Drbokeh_fl70_K25_fp0.25\subcropped", "https://f004.backblazeb2.com/file/dof-mos/drbokeh"],
-        [r"I:\My Drive\DOF_benchmarking\inference\Bokehliciouslg_intp_fl70\subcropped", "https://f004.backblazeb2.com/file/dof-mos/bokehlicious"],
+        [r"I:\My Drive\DOF_benchmarking\inference\fl_70\F2.8\subcropped", "https://f004.backblazeb2.com/file/dof-mos/GT_fl70_F2.8"],
+        [r"I:\My Drive\DOF_benchmarking\inference\fl_70\bokehlicious_F2.8_intp\subcropped", "https://f004.backblazeb2.com/file/dof-mos/bokehlicious"],        
+        [r"I:\My Drive\DOF_benchmarking\inference\fl_70\Bokehme_scale20_K40\subcropped", "https://f004.backblazeb2.com/file/dof-mos/bokehme"],
+        [r"I:\My Drive\DOF_benchmarking\inference\fl_70\Drbokeh_K25_fp.25\subcropped", "https://f004.backblazeb2.com/file/dof-mos/drbokeh"],
+        [r"I:\My Drive\DOF_benchmarking\inference\fl_70\bokehdiff_fp.4K25_0312\demo\subcropped", "https://f004.backblazeb2.com/file/dof-mos/bokehdiff_fp.4K25"],
+        [r"I:\My Drive\DOF_benchmarking\inference\fl_70\bokehlicious_F4.5_intp\subcropped", "https://f004.backblazeb2.com/file/dof-mos/bokehlicious_F4.5"],
+        
     ]
     
-    output_csv2 = "I:\My Drive\DOF_benchmarking\inference\images_used_subcrops.csv"
+    output_csv2 = r"I:\My Drive\DOF_benchmarking\inference\fl_70\images_used_subcrops_survey2.csv"
     
     create_csv_from_directories(dir_prefix_list, output_csv2)
 
-    cat_csvs_as_text(output_csv1, output_csv2, "I:\My Drive\DOF_benchmarking\inference\images_used_all.csv")
+    cat_csvs_as_text(output_csv1, output_csv2, r"I:\My Drive\DOF_benchmarking\inference\fl_70\images_used_all_survey2.csv")
