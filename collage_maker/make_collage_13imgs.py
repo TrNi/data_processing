@@ -2,13 +2,13 @@
 
 Layout overview:
     ┌──────┬────────┬────────┬────────┬────────┐
-    │Label │ Img 1  │ Img 2  │ Img 3  │ Img 4  │  ← Reflective row (row 1)
+    │Img 1 │ Img 2  │ Img 3  │ Img 4  │  ← Reflective row (row 1)
     │      ├────────┼────────┼────────┼───┬────┤
-    │Label │ Img 5  │ Img 6  │ Img 7  │ 8 │    │  ← Semi-transparent (row 2)
-    │      │ (Img5–7 span rows 2–3)     │  │    │
+    │Img 5 │ Img 6  │ Img 7  │ 8 │    │  ← Semi-transparent (row 2)
+    │      │ (Img5-7 span rows 2-3)     │  │    │
     │      ├────────┴────────┴────────┴───┼────┤
-    │      │      Img 5–7 continue        │  9 │  ← Semi-transparent (row 3)
-    │Label │  Img10 │  Img11 │  Img12 │  Img13 │  ← Fine details (row 4, no spans)
+    │      │      Img 5-7 continue        │  9 │  ← Semi-transparent (row 3)
+    │Img10 │  Img11 │  Img12 │  Img13 │  ← Fine details (row 4, no spans)
     └──────┴────────┴────────┴────────┴────────┘
 
 Usage examples:
@@ -321,7 +321,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--backend", choices=["pil", "cv2", "both"], default="pil", help="Rendering backend (default: PIL)")
     parser.add_argument("--width-in", type=float, default=6.5, help="Target paper width in inches (default: 6.5).")
     parser.add_argument("--height-ratio", type=float, default=4.2 / 6.5, help="Height as a fraction of width (default: 4.2 / 6.5).")
-    parser.add_argument("--dpi", type=int, default=300, help="Output DPI for sizing calculations (default: 300).")
+    parser.add_argument("--dpi", type=int, default=450, help="Output DPI for sizing calculations (default: 300).")
     parser.add_argument("--gap", type=int, default=6, help="Whitespace between tiles in pixels (default: 6).")
     parser.add_argument(
         "--labels",
