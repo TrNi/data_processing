@@ -114,8 +114,8 @@ if __name__ == "__main__":
                        help="Directory containing alignment JSON files with crop parameters")
     parser.add_argument("source_dirs", nargs='+',
                        help="One or more source image directories to process")
-    parser.add_argument("--output_suffix", default="_cropped",
-                       help="Suffix to append to output directory names (default: _cropped)")
+    parser.add_argument("--output_suffix", default="_aligned",
+                       help="Suffix to append to output directory names (default: _aligned)")
     
     args = parser.parse_args()
     

@@ -1,5 +1,5 @@
 '''
- python .\generate_3fig6col_comparison_figure.py "I:\My Drive\DOF_benchmarking\inference\fl_70\crop_coords_4701.txt" "I:\My Drive\DOF_benchmarking\inference\Scene8_6D_B_Right_fl70\crop_coords_0.txt" "I:\My Drive\DOF_benchmarking\inference\fl_70\crop_coords_4620.txt" --output "H:\My Drive\Research_collabs\MODEST Research Collab\ECCV_Visuals\dof_new\3col.PNG"
+ python .\generate_2col_comparison_figure.py "path\to\crop_coords_1.txt" "path\to\crop_coords_2.txt" --output "output.PNG"
 '''
 
 import os
@@ -17,7 +17,7 @@ rcParams['font.family'] = 'serif'
 rcParams['font.serif'] = ['Times New Roman']
 
 # Paper template page width (double column width in inches)
-PAGE_WIDTH = 7.5
+PAGE_WIDTH = 6.8
 
 # Bounding box colors (RGB normalized to 0-1 for matplotlib)
 # BBOX_COLORS = [
@@ -32,6 +32,7 @@ PAGE_WIDTH = 7.5
 #     (102, 178, 250),     # Royal whitish popping blue
 #     (217, 178, 242)      # Whitish violet
 # ]
+
 BBOX_COLORS = [
     (0.20, 1.00, 0.20),   # green
     (1.00, 0.20, 0.60),   # pink
@@ -120,14 +121,14 @@ def crop_image(img, bbox):
 
 def generate_comparison_figure(text_files, output_path):
     """
-    Generate a comparison figure from 3 text files.
+    Generate a 2-column comparison figure at 2/3 page width from 2 text files.
     
     Args:
-        text_files: List of 3 text file paths
+        text_files: List of 2 text file paths
         output_path: Path to save the output figure
     """
-    if len(text_files) != 3:
-        raise ValueError("Exactly 3 text files are required")
+    if len(text_files) != 2:
+        raise ValueError("Exactly 2 text files are required")
     
     # Parse all text files
     all_data = []
@@ -138,21 +139,18 @@ def generate_comparison_figure(text_files, output_path):
     # Determine number of rows (number of folders/methods)
     num_rows = len(all_data[0][2])
     
-    # Create figure with proper width ratios
-    # Even columns (crops) should be 75% of odd columns (originals)
-    # Width ratios: [orig1=1.0, crops1=0.75, orig2=1.0, crops2=0.75, orig3=1.0, crops3=0.75]
-    width_ratios = [1.0, 0.4, 1.0, 0.4, 1.0, 0.4]
+    # Width ratios: [orig1=1.0, crops1=0.4, orig2=1.0, crops2=0.4]
+    width_ratios = [1.0, 0.4, 1.0, 0.4]
     
-    # Calculate figure dimensions
-    # Assuming original images have aspect ratio ~1.5 (width/height)
-    fig_width = PAGE_WIDTH  # Increased from ECCV_PAGE_WIDTH
+    # 2/3 of the 3-column figure width
+    fig_width = PAGE_WIDTH * (2 / 3)
     fig_height = fig_width * num_rows / 3.5 * 0.67
     fig = plt.figure(figsize=(fig_width, fig_height))
     
     # Create grid with custom width ratios
-    gs = fig.add_gridspec(num_rows, 6, 
+    gs = fig.add_gridspec(num_rows, 4,
                           width_ratios=width_ratios,
-                          hspace=0.02, wspace=0.02, 
+                          hspace=0.02, wspace=0.02,
                           left=0.04, right=0.998, top=0.99, bottom=0.01)
     
     # Process each column (text file)
@@ -221,7 +219,6 @@ def generate_comparison_figure(text_files, output_path):
                     crop_images.append(cropped_img)
                 
                 # Determine target width for crops (to fill the column)
-                # Get the maximum crop width
                 max_crop_width = max(crop.width for crop in crop_images)
                 
                 # Stack crops vertically with colored borders
@@ -239,7 +236,7 @@ def generate_comparison_figure(text_files, output_path):
                     # Create a new image with border
                     new_width = crop_img.width + 2 * border_width
                     new_height = crop_img.height + 2 * border_width
-                    bordered = Image.new('RGB', (new_width, new_height), BBOX_COLORS_PIL[crop_idx], )
+                    bordered = Image.new('RGB', (new_width, new_height), BBOX_COLORS_PIL[crop_idx])
                     bordered.paste(crop_img, (border_width, border_width))
                     bordered_crops.append(bordered)
                 
@@ -270,26 +267,26 @@ def generate_comparison_figure(text_files, output_path):
                 ax_crops.axis('off')
     
     # Save figure with high quality
-    plt.savefig(output_path, dpi=450, bbox_inches='tight', pad_inches=0.005)
+    plt.savefig(output_path, dpi=600, bbox_inches='tight', pad_inches=0.005)
     print(f"Figure saved to: {output_path}")
     plt.close()
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Generate a comparison figure from 3 text files with bounding boxes and folder paths.'
+        description='Generate a 2-column comparison figure at 2/3 page width from 2 text files with bounding boxes and folder paths.'
     )
     parser.add_argument(
         'text_files',
-        nargs=3,
+        nargs=2,
         type=str,
-        help='Paths to 3 text files'
+        help='Paths to 2 text files'
     )
     parser.add_argument(
         '--output',
         type=str,
-        default='comparison_figure.png',
-        help='Output figure path (default: comparison_figure.png)'
+        default='comparison_figure_2col.png',
+        help='Output figure path (default: comparison_figure_2col.png)'
     )
     
     args = parser.parse_args()

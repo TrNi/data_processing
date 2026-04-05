@@ -40,7 +40,9 @@ def extract_and_save_image(h5_path, dataset_key, image_index, save_dir):
         print(dataset)
         # Read the image
         image_data = dataset[image_index]
-    
+    image_data = image_data.transpose(1,2,0)
+    if image_data.ndim == 3 and image_data.shape[2] == 3:
+        image_data = image_data[:, :, ::-1]
     # Store original data for info
     original_dtype = image_data.dtype
     original_min = image_data.min()
