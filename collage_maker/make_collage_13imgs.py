@@ -41,13 +41,6 @@ COL_FRACTIONS_BY_ROW: dict[int, Tuple[float, float, float, float, float]] = {
     3: (0.0, 0.27+0.025, 0.26+0.025, 0.15+0.025, 0.22+0.025),
 }
 ROW_FRACTIONS: Tuple[float, float, float, float] = (0.25, 0.25, 0.25, 0.25)
-DEFAULT_LABELS = (
-    "Reflective surfaces",
-    "Semi-transparent surfaces",
-    "Fine details",
-)
-LABEL_BG = (244, 245, 248)
-LABEL_FG = (32, 34, 42)
 CANVAS_BG = (255, 255, 255)
 
 
@@ -74,11 +67,6 @@ IMAGE_SLOTS: Sequence[Slot] = (
     Slot("img13", (4, 5), (3, 4)),
 )
 
-LABEL_SLOTS: Sequence[Slot] = (
-    Slot("label_top", (0, 1), (0, 1)),
-    Slot("label_mid", (0, 1), (1, 3)),
-    Slot("label_bottom", (0, 1), (3, 4)),
-)
 
 
 # ---------------------------------------------------------------------------
@@ -122,7 +110,7 @@ def _layout_boxes(width_px: int, height_px: int, gap: int) -> dict[str, Tuple[in
         col_pos_by_row[r] = _positions(col_sizes, gap)
 
     boxes: dict[str, Tuple[int, int, int, int]] = {}
-    for slot in (*IMAGE_SLOTS, *LABEL_SLOTS):
+    for slot in IMAGE_SLOTS:
         c0, c1 = slot.grid_col
         r0, r1 = slot.grid_row
 
@@ -178,50 +166,10 @@ def _resize_cover_cv(img: np.ndarray, target_w: int, target_h: int) -> np.ndarra
 
 
 # ---------------------------------------------------------------------------
-# Label rendering
-# ---------------------------------------------------------------------------
-
-def _load_font(base_size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
-    for font_name in ("SourceSansPro-SemiBold.ttf", "arial.ttf"):
-        try:
-            return ImageFont.truetype(font_name, base_size)
-        except OSError:
-            continue
-    return ImageFont.load_default()
-
-
-def _render_label_patch(width: int, height: int, text: str) -> Image.Image:
-    label = Image.new("RGB", (width, height), LABEL_BG)
-    text_canvas = Image.new("RGBA", (height, width), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(text_canvas)
-
-    # Fit text so that after rotation it stays within the slot
-    base_size = max(24, int(min(width, height) * 0.8))
-    font = _load_font(base_size)
-    for size in range(base_size, 4, -1):
-        font = _load_font(size)
-        bbox = draw.textbbox((0, 0), text, font=font)
-        bw = bbox[2] - bbox[0]
-        bh = bbox[3] - bbox[1]
-        # After 90° rotation, dimensions swap
-        if bh <= width * 0.9 and bw <= height * 0.9:
-            break
-
-    tx = (height - bw) / 2
-    ty = (width - bh) / 2
-    draw.text((tx, ty), text, font=font, fill=LABEL_FG + (255,))
-
-    text_rot = text_canvas.rotate(90, expand=True)
-    label = label.convert("RGBA")
-    label.alpha_composite(text_rot.crop((0, 0, width, height)))
-    return label.convert("RGB")
-
-
-# ---------------------------------------------------------------------------
 # Builders
 # ---------------------------------------------------------------------------
 
-def _build_pil(images: Sequence[Path], labels: Sequence[str], 
+def _build_pil(images: Sequence[Path],
     width_px: int, height_px: int, gap: int, dest: Path, dpi: int = 600) -> None:
     boxes = _layout_boxes(width_px, height_px, gap)
     canvas = Image.new("RGB", (width_px, height_px), color=CANVAS_BG)
@@ -231,11 +179,6 @@ def _build_pil(images: Sequence[Path], labels: Sequence[str],
             img = img.convert("RGB")
             x, y, w, h = boxes[slot.name]
             canvas.paste(_resize_cover_pil(img, w, h), (x, y))
-
-    for text, slot in zip(labels, LABEL_SLOTS):
-        label_img = _render_label_patch(*boxes[slot.name][2:], text)
-        x, y, w, h = boxes[slot.name]
-        canvas.paste(label_img, (x, y))
 
     base = dest.with_suffix("") 
     
@@ -247,7 +190,7 @@ def _build_pil(images: Sequence[Path], labels: Sequence[str],
     print(f"Saved PIL collage -> {out_pdf}")
 
 
-def _build_cv2(images: Sequence[Path], labels: Sequence[str], 
+def _build_cv2(images: Sequence[Path],
     width_px: int, height_px: int, gap: int, dest: Path, dpi: int = 600) -> None:
     if cv2 is None:  # pragma: no cover
         raise ImportError("OpenCV (cv2) is not installed; install opencv-python to use this backend.")
@@ -263,11 +206,6 @@ def _build_cv2(images: Sequence[Path], labels: Sequence[str],
         x, y, w, h = boxes[slot.name]
         patch = _resize_cover_cv(rgb, w, h)
         canvas[y : y + h, x : x + w] = cv2.cvtColor(patch, cv2.COLOR_RGB2BGR)
-
-    for text, slot in zip(labels, LABEL_SLOTS):
-        x, y, w, h = boxes[slot.name]
-        label_img = _render_label_patch(w, h, text)
-        canvas[y : y + h, x : x + w] = cv2.cvtColor(np.array(label_img), cv2.COLOR_RGB2BGR)
 
     base = dest.with_suffix("")
     rgb = cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB)
@@ -292,23 +230,20 @@ def make_collage(
     height_ratio: float,
     dpi: int,
     gap: int,
-    labels: Sequence[str],
     output: Path,
 ) -> None:
     if len(images) != len(IMAGE_SLOTS):
         raise ValueError(f"Expected {len(IMAGE_SLOTS)} images, received {len(images)}")
-    if len(labels) != len(LABEL_SLOTS):
-        raise ValueError(f"Expected {len(LABEL_SLOTS)} labels, received {len(labels)}")
 
     width_px = int(round(width_in * dpi))
     height_px = int(round(width_px * height_ratio))
 
     if backend in {"pil", "both"}:
         pil_path = output.with_suffix(".pil.jpg") if backend == "both" else output
-        _build_pil(images, labels, width_px, height_px, gap, pil_path, dpi)
+        _build_pil(images, width_px, height_px, gap, pil_path, dpi)
     if backend in {"cv2", "both"}:
         cv_path = output.with_suffix(".cv2.jpg") if backend == "both" else output
-        _build_cv2(images, labels, width_px, height_px, gap, cv_path, dpi)
+        _build_cv2(images, width_px, height_px, gap, cv_path, dpi)
 
 
 # ---------------------------------------------------------------------------
@@ -323,12 +258,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--height-ratio", type=float, default=4.2 / 6.5, help="Height as a fraction of width (default: 4.2 / 6.5).")
     parser.add_argument("--dpi", type=int, default=450, help="Output DPI for sizing calculations (default: 300).")
     parser.add_argument("--gap", type=int, default=6, help="Whitespace between tiles in pixels (default: 6).")
-    parser.add_argument(
-        "--labels",
-        nargs=len(LABEL_SLOTS),
-        default=DEFAULT_LABELS,
-        help="Three label strings for the category strips (top, middle, bottom).",
-    )
     parser.add_argument("--output", type=Path, default=Path("collage13.jpg"), help="Destination file (extension inferred).")
     return parser.parse_args()
 
@@ -342,7 +271,6 @@ def main() -> None:
         height_ratio=args.height_ratio,
         dpi=args.dpi,
         gap=args.gap,
-        labels=args.labels,
         output=args.output,
     )
 
