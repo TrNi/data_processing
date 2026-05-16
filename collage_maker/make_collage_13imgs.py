@@ -79,7 +79,7 @@ def _px_sizes(total: int, fractions: Iterable[float], gap: int) -> List[int]:
     raw = [available * f for f in fracs]
     rounded = [int(round(val)) for val in raw]
     diff = available - sum(rounded)
-    for idx in np.argsort([abs(r - val) for r, val in zip(rounded, raw)]):
+    for idx in np.argsort([-abs(r - val) for r, val in zip(rounded, raw)]):
         if diff == 0:
             break
         step = 1 if diff > 0 else -1
@@ -133,36 +133,12 @@ def _layout_boxes(width_px: int, height_px: int, gap: int) -> dict[str, Tuple[in
 # Image resizing helpers
 # ---------------------------------------------------------------------------
 
-def _resize_cover_pil(img: Image.Image, target_w: int, target_h: int) -> Image.Image:
-    src_w, src_h = img.size
-    target_ratio = target_w / target_h
-    src_ratio = src_w / src_h
-    if src_ratio > target_ratio:
-        new_h = target_h
-        new_w = int(round(new_h * src_ratio))
-    else:
-        new_w = target_w
-        new_h = int(round(new_w / src_ratio))
-    resized = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
-    left = (new_w - target_w) // 2
-    top = (new_h - target_h) // 2
-    return resized.crop((left, top, left + target_w, top + target_h))
+def _resize_fill_pil(img: Image.Image, target_w: int, target_h: int) -> Image.Image:
+    return img.resize((target_w, target_h), Image.Resampling.LANCZOS)
 
 
-def _resize_cover_cv(img: np.ndarray, target_w: int, target_h: int) -> np.ndarray:
-    src_h, src_w = img.shape[:2]
-    target_ratio = target_w / target_h
-    src_ratio = src_w / src_h
-    if src_ratio > target_ratio:
-        new_h = target_h
-        new_w = int(round(new_h * src_ratio))
-    else:
-        new_w = target_w
-        new_h = int(round(new_w / src_ratio))
-    resized = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_AREA)
-    x0 = (new_w - target_w) // 2
-    y0 = (new_h - target_h) // 2
-    return resized[y0 : y0 + target_h, x0 : x0 + target_w]
+def _resize_fill_cv(img: np.ndarray, target_w: int, target_h: int) -> np.ndarray:
+    return cv2.resize(img, (target_w, target_h), interpolation=cv2.INTER_AREA)
 
 
 # ---------------------------------------------------------------------------
@@ -178,7 +154,7 @@ def _build_pil(images: Sequence[Path],
         with Image.open(img_path) as img:
             img = img.convert("RGB")
             x, y, w, h = boxes[slot.name]
-            canvas.paste(_resize_cover_pil(img, w, h), (x, y))
+            canvas.paste(_resize_fill_pil(img, w, h), (x, y))
 
     base = dest.with_suffix("") 
     
@@ -204,7 +180,7 @@ def _build_cv2(images: Sequence[Path],
             raise FileNotFoundError(img_path)
         rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
         x, y, w, h = boxes[slot.name]
-        patch = _resize_cover_cv(rgb, w, h)
+        patch = _resize_fill_cv(rgb, w, h)
         canvas[y : y + h, x : x + w] = cv2.cvtColor(patch, cv2.COLOR_RGB2BGR)
 
     base = dest.with_suffix("")

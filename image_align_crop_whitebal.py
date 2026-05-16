@@ -601,8 +601,47 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Align and white-balance image directories using focus-masked SIFT + RANSAC."
     )
-    parser.add_argument("ref_dir", help="Reference image directory")
-    parser.add_argument("src_dir", help="Source image directory")
+
+
+    # ref_dirs = [#r"I:\My Drive\Pubdata\Public_Data_Do_Not_Modify\MODEST - Multi-optics DOF Stereo Dataset\Scene5\EOS6D_A_Left\fl_28mm\Inference\F22.0",
+    #            r"I:\My Drive\Pubdata\Public_Data_Do_Not_Modify\MODEST - Multi-optics DOF Stereo Dataset\Scene5\EOS6D_A_Left\fl_36mm\Inference\F22.0",
+    #            r"I:\My Drive\Pubdata\Public_Data_Do_Not_Modify\MODEST - Multi-optics DOF Stereo Dataset\Scene5\EOS6D_A_Left\fl_45mm\Inference\F22.0",
+    #            r"I:\My Drive\Pubdata\Public_Data_Do_Not_Modify\MODEST - Multi-optics DOF Stereo Dataset\Scene5\EOS6D_A_Left\fl_60mm\Inference\F22.0",
+    #            r"I:\My Drive\Pubdata\Public_Data_Do_Not_Modify\MODEST - Multi-optics DOF Stereo Dataset\Scene5\EOS6D_A_Left\fl_70mm\Inference\F22.0"]
+
+    # src_dirs = [#r"I:\My Drive\Pubdata\Public_Data_Do_Not_Modify\MODEST - Multi-optics DOF Stereo Dataset\Scene5\EOS6D_A_Left\fl_28mm\Inference\F2.8",
+    #            r"I:\My Drive\Pubdata\Public_Data_Do_Not_Modify\MODEST - Multi-optics DOF Stereo Dataset\Scene5\EOS6D_A_Left\fl_36mm\Inference\F2.8",
+    #            r"I:\My Drive\Pubdata\Public_Data_Do_Not_Modify\MODEST - Multi-optics DOF Stereo Dataset\Scene5\EOS6D_A_Left\fl_45mm\Inference\F2.8",
+    #            r"I:\My Drive\Pubdata\Public_Data_Do_Not_Modify\MODEST - Multi-optics DOF Stereo Dataset\Scene5\EOS6D_A_Left\fl_60mm\Inference\F2.8",
+    #            r"I:\My Drive\Pubdata\Public_Data_Do_Not_Modify\MODEST - Multi-optics DOF Stereo Dataset\Scene5\EOS6D_A_Left\fl_70mm\Inference\F2.8"]
+    
+    # ref_dirs = [r"I:\My Drive\Pubdata\Public_Data_Do_Not_Modify\MODEST - Multi-optics DOF Stereo Dataset\Scene3\EOS6D_A_Right\fl_28mm\Inference\F22.0",
+    #            r"I:\My Drive\Pubdata\Public_Data_Do_Not_Modify\MODEST - Multi-optics DOF Stereo Dataset\Scene3\EOS6D_A_Right\fl_36mm\Inference\F22.0",
+    #            r"I:\My Drive\Pubdata\Public_Data_Do_Not_Modify\MODEST - Multi-optics DOF Stereo Dataset\Scene3\EOS6D_A_Right\fl_45mm\Inference\F22.0",
+    #            r"I:\My Drive\Pubdata\Public_Data_Do_Not_Modify\MODEST - Multi-optics DOF Stereo Dataset\Scene3\EOS6D_A_Right\fl_60mm\Inference\F22.0",
+    #            r"I:\My Drive\Pubdata\Public_Data_Do_Not_Modify\MODEST - Multi-optics DOF Stereo Dataset\Scene3\EOS6D_A_Right\fl_70mm\Inference\F22.0"]
+
+    # src_dirs = [r"I:\My Drive\Pubdata\Public_Data_Do_Not_Modify\MODEST - Multi-optics DOF Stereo Dataset\Scene3\EOS6D_A_Right\fl_28mm\Inference\F2.8",
+    #            r"I:\My Drive\Pubdata\Public_Data_Do_Not_Modify\MODEST - Multi-optics DOF Stereo Dataset\Scene3\EOS6D_A_Right\fl_36mm\Inference\F2.8",
+    #            r"I:\My Drive\Pubdata\Public_Data_Do_Not_Modify\MODEST - Multi-optics DOF Stereo Dataset\Scene3\EOS6D_A_Right\fl_45mm\Inference\F2.8",
+    #            r"I:\My Drive\Pubdata\Public_Data_Do_Not_Modify\MODEST - Multi-optics DOF Stereo Dataset\Scene3\EOS6D_A_Right\fl_60mm\Inference\F2.8",
+    #            r"I:\My Drive\Pubdata\Public_Data_Do_Not_Modify\MODEST - Multi-optics DOF Stereo Dataset\Scene3\EOS6D_A_Right\fl_70mm\Inference\F2.8"]
+    
+    # ref_dirs = [r"I:\My Drive\Pubdata\Public_Data_Do_Not_Modify\MODEST - Multi-optics DOF Stereo Dataset\Scene8\EOS6D_A_Left\fl_28mm\Inference\F22.0",
+    #            r"I:\My Drive\Pubdata\Public_Data_Do_Not_Modify\MODEST - Multi-optics DOF Stereo Dataset\Scene8\EOS6D_A_Left\fl_36mm\Inference\F22.0",
+    #            r"I:\My Drive\Pubdata\Public_Data_Do_Not_Modify\MODEST - Multi-optics DOF Stereo Dataset\Scene8\EOS6D_A_Left\fl_45mm\Inference\F22.0",
+    #            r"I:\My Drive\Pubdata\Public_Data_Do_Not_Modify\MODEST - Multi-optics DOF Stereo Dataset\Scene8\EOS6D_A_Left\fl_60mm\Inference\F22.0",
+    #            r"I:\My Drive\Pubdata\Public_Data_Do_Not_Modify\MODEST - Multi-optics DOF Stereo Dataset\Scene8\EOS6D_A_Left\fl_70mm\Inference\F22.0"]
+
+    # src_dirs = [r"I:\My Drive\Pubdata\Public_Data_Do_Not_Modify\MODEST - Multi-optics DOF Stereo Dataset\Scene8\EOS6D_A_Left\fl_28mm\Inference\F2.8",
+    #            r"I:\My Drive\Pubdata\Public_Data_Do_Not_Modify\MODEST - Multi-optics DOF Stereo Dataset\Scene8\EOS6D_A_Left\fl_36mm\Inference\F2.8",
+    #            r"I:\My Drive\Pubdata\Public_Data_Do_Not_Modify\MODEST - Multi-optics DOF Stereo Dataset\Scene8\EOS6D_A_Left\fl_45mm\Inference\F2.8",
+    #            r"I:\My Drive\Pubdata\Public_Data_Do_Not_Modify\MODEST - Multi-optics DOF Stereo Dataset\Scene8\EOS6D_A_Left\fl_60mm\Inference\F2.8",
+    #            r"I:\My Drive\Pubdata\Public_Data_Do_Not_Modify\MODEST - Multi-optics DOF Stereo Dataset\Scene8\EOS6D_A_Left\fl_70mm\Inference\F2.8"]
+            
+
+    # parser.add_argument("ref_dir", help="Reference image directory")
+    # parser.add_argument("src_dir", help="Source image directory")
     parser.add_argument("--model", default="translation",
                         choices=["translation", "similarity"],
                         help="translation (2DOF) or similarity (4DOF, for aperture breathing)")
@@ -617,13 +656,15 @@ if __name__ == "__main__":
                         help="Alpha blending factor for overlay (default 0.5)")
     args = parser.parse_args()
 
-    process_image_directories(
-        args.ref_dir,
-        args.src_dir,
-        model=args.model,
-        focus_percentile=args.focus_pct,
-        ransac_thresh=args.ransac,
-        ratio_thresh=args.ratio,
-        min_inliers=args.min_inliers,
-        alpha=args.alpha,
-    )
+    for i in range(len(ref_dirs)):
+
+        process_image_directories(
+            ref_dirs[i],
+            src_dirs[i],
+            model=args.model,
+            focus_percentile=args.focus_pct,
+            ransac_thresh=args.ransac,
+            ratio_thresh=args.ratio,
+            min_inliers=args.min_inliers,
+            alpha=args.alpha,
+        )

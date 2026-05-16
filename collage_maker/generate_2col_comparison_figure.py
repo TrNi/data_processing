@@ -144,7 +144,7 @@ def generate_comparison_figure(text_files, output_path):
     
     # 2/3 of the 3-column figure width
     fig_width = PAGE_WIDTH * (2 / 3)
-    fig_height = fig_width * num_rows / 3.5 * 0.67
+    fig_height = fig_width * num_rows / 3.5 #* 0.67
     fig = plt.figure(figsize=(fig_width, fig_height))
     
     # Create grid with custom width ratios
@@ -267,7 +267,7 @@ def generate_comparison_figure(text_files, output_path):
                 ax_crops.axis('off')
     
     # Save figure with high quality
-    plt.savefig(output_path, dpi=600, bbox_inches='tight', pad_inches=0.005)
+    plt.savefig(output_path, dpi=900, bbox_inches='tight', pad_inches=0.005)
     print(f"Figure saved to: {output_path}")
     plt.close()
 

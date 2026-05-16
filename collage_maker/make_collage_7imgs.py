@@ -65,7 +65,7 @@ def _px_sizes(total, fractions, gap):
     diff = available - sum(rounded)
     # Correct rounding drift on the largest remainder
     if diff:
-        order = np.argsort([abs(r - size) for r, size in zip(rounded, raw_sizes)])
+        order = np.argsort([-abs(r - size) for r, size in zip(rounded, raw_sizes)])
         for idx in order:
             if diff == 0:
                 break
@@ -100,36 +100,12 @@ def _compute_boxes(width_px, height_px, gap):
     return boxes
 
 
-def _resize_cover_pil(img, target_w, target_h):
-    src_w, src_h = img.size
-    target_ratio = target_w / target_h
-    src_ratio = src_w / src_h
-    if src_ratio > target_ratio:
-        new_h = target_h
-        new_w = int(round(new_h * src_ratio))
-    else:
-        new_w = target_w
-        new_h = int(round(new_w / src_ratio))
-    img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
-    left = (new_w - target_w) // 2
-    top = (new_h - target_h) // 2
-    return img.crop((left, top, left + target_w, top + target_h))
+def _resize_fill_pil(img, target_w, target_h):
+    return img.resize((target_w, target_h), Image.Resampling.LANCZOS)
 
 
-def _resize_cover_cv(img, target_w, target_h):
-    src_h, src_w = img.shape[:2]
-    target_ratio = target_w / target_h
-    src_ratio = src_w / src_h
-    if src_ratio > target_ratio:
-        new_h = target_h
-        new_w = int(round(new_h * src_ratio))
-    else:
-        new_w = target_w
-        new_h = int(round(new_w / src_ratio))
-    resized = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_AREA)
-    x0 = (new_w - target_w) // 2
-    y0 = (new_h - target_h) // 2
-    return resized[y0 : y0 + target_h, x0 : x0 + target_w]
+def _resize_fill_cv(img, target_w, target_h):
+    return cv2.resize(img, (target_w, target_h), interpolation=cv2.INTER_AREA)
 
 
 def _build_pil(images, width_px, height_px, gap, dest, dpi):
@@ -139,7 +115,7 @@ def _build_pil(images, width_px, height_px, gap, dest, dpi):
         with Image.open(img_path) as img:
             img = img.convert("RGB")
             x, y, w, h = box
-            canvas.paste(_resize_cover_pil(img, w, h), (x, y))
+            canvas.paste(_resize_fill_pil(img, w, h), (x, y))
     base = dest.with_suffix("")
     out_png = base.with_suffix(f".{dpi}dpi.png")
     out_pdf = base.with_suffix(f".{dpi}dpi.pdf")
@@ -157,7 +133,7 @@ def _build_cv2(images, width_px, height_px, gap, dest, dpi=600):
     for img_path, box in zip(images, boxes):
         img = cv2.cvtColor(cv2.imread(str(img_path)), cv2.COLOR_BGR2RGB)
         x, y, w, h = box
-        patch = _resize_cover_cv(img, w, h)
+        patch = _resize_fill_cv(img, w, h)
         canvas[y : y + h, x : x + w] = cv2.cvtColor(patch, cv2.COLOR_RGB2BGR)
     base = dest.with_suffix("")
     rgb = cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB)
