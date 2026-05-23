@@ -1,3 +1,4 @@
+import shutil
 import cv2
 import numpy as np
 import json
@@ -589,9 +590,20 @@ def process_image_directories(
     
     print(f"\n{'='*60}")
     print("Processing complete!")
-    print(f"  Aligned images:        {src_align_dir}")
     print(f"  White-balanced images: {ref_align_wb_dir}, {src_align_wb_dir}")
     print(f"  Plots saved in:        {ref_align_wb_dir.parent}")
+
+    # Delete the intermediate aligned-only directory only after verifying output integrity
+    _img_exts = {'.png', '.jpg', '.jpeg', '.tif', '.tiff'}
+    _ref_wb_count = len([f for f in ref_align_wb_dir.iterdir() if f.suffix.lower() in _img_exts]) if ref_align_wb_dir.exists() else 0
+    _src_wb_count = len([f for f in src_align_wb_dir.iterdir() if f.suffix.lower() in _img_exts]) if src_align_wb_dir.exists() else 0
+    if src_align_wb_dir.exists() and _src_wb_count == _ref_wb_count and _src_wb_count > 0:
+        if src_align_dir.exists():
+            shutil.rmtree(src_align_dir)
+            print(f"[cleanup] Deleted intermediate directory: {src_align_dir}")
+    else:
+        print(f"[cleanup] Skipped deletion of {src_align_dir}: "
+              f"ref_wb={_ref_wb_count} images, src_wb={_src_wb_count} - counts do not match or directory missing.")
     print(f"{'='*60}")
 
 

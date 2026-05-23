@@ -30,16 +30,16 @@ def resize_images(input_dir, output_dir, target_width, target_height):
     # Create output directory if it doesn't exist
     output_path.mkdir(parents=True, exist_ok=True)
     
-    # Find all JPG images (case-insensitive)
-    jpg_files = list(input_path.glob('*.JPG'))
-    #list(input_path.glob('*.jpg')) + list(input_path.glob('*.JPG')) + \
-    #list(input_path.glob('*.jpeg')) + list(input_path.glob('*.JPEG'))
+    # Find all JPG and PNG images (case-insensitive)
+    jpg_files = (list(input_path.glob('*.jpg')) +  #+ list(input_path.glob('*.JPG')) +
+                 list(input_path.glob('*.jpeg')) + # + list(input_path.glob('*.JPEG')) +
+                 list(input_path.glob('*.png'))) #+ list(input_path.glob('*.PNG')))
     
     if not jpg_files:
-        print(f"No JPG images found in '{input_dir}'.")
+        print(f"No JPG/PNG images found in '{input_dir}'.")
         return
     
-    print(f"Found {len(jpg_files)} JPG image(s) to process.")
+    print(f"Found {len(jpg_files)} image(s) to process.")
     print(f"Target size: {target_width}x{target_height}")
     
     # Process each image
@@ -57,7 +57,10 @@ def resize_images(input_dir, output_dir, target_width, target_height):
             
             # Save with same name in output directory
             save_file = output_path / img_file.name
-            resized_img.save(save_file, quality=100)
+            if img_file.suffix.lower() in ('.png',):
+                resized_img.save(save_file)
+            else:
+                resized_img.save(save_file, quality=100)
             
             print(f"Processed: '{img_file.name}' ({original_width}x{original_height} -> {target_width}x{target_height})")
             processed += 1
