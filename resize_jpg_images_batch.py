@@ -10,16 +10,16 @@ import glob
              
 
 
-INPUT_DIRS = glob.glob(r"I:\My Drive\DOF_benchmarking\inference\fl_28\bokehlicious_F?") +\
-             glob.glob(r"I:\My Drive\DOF_benchmarking\inference\fl_36\bokehlicious_F?") +\
-             glob.glob(r"I:\My Drive\DOF_benchmarking\inference\fl_45\bokehlicious_F?") +\
-             glob.glob(r"I:\My Drive\DOF_benchmarking\inference\fl_60\bokehlicious_F?") +\
-             glob.glob(r"I:\My Drive\DOF_benchmarking\inference\fl_70\bokehlicious_F?") +\
-             glob.glob(r"I:\My Drive\DOF_benchmarking\inference\fl_28\bokehlicious_F??") +\
-             glob.glob(r"I:\My Drive\DOF_benchmarking\inference\fl_36\bokehlicious_F??") +\
-             glob.glob(r"I:\My Drive\DOF_benchmarking\inference\fl_45\bokehlicious_F??") +\
-             glob.glob(r"I:\My Drive\DOF_benchmarking\inference\fl_60\bokehlicious_F??") +\
-             glob.glob(r"I:\My Drive\DOF_benchmarking\inference\fl_70\bokehlicious_F??") 
+# INPUT_DIRS = glob.glob(r"I:\My Drive\DOF_benchmarking\inference\fl_28\bokehlicious_F?") +\
+#              glob.glob(r"I:\My Drive\DOF_benchmarking\inference\fl_36\bokehlicious_F?") +\
+#              glob.glob(r"I:\My Drive\DOF_benchmarking\inference\fl_45\bokehlicious_F?") +\
+#              glob.glob(r"I:\My Drive\DOF_benchmarking\inference\fl_60\bokehlicious_F?") +\
+#              glob.glob(r"I:\My Drive\DOF_benchmarking\inference\fl_70\bokehlicious_F?") +\
+# INPUT_DIRS =             glob.glob(r"I:\My Drive\DOF_benchmarking\inference\fl_28\bokehlicious_p4\bokehlicious_F??") +\
+#              glob.glob(r"I:\My Drive\DOF_benchmarking\inference\fl_36\bokehlicious_p4\bokehlicious_F??") +\
+#              glob.glob(r"I:\My Drive\DOF_benchmarking\inference\fl_45\bokehlicious_p4\bokehlicious_F??") +\
+#              glob.glob(r"I:\My Drive\DOF_benchmarking\inference\fl_60\bokehlicious_p4\bokehlicious_F??") +\
+INPUT_DIRS =   glob.glob(r"I:\My Drive\DOF_benchmarking\inference\fl_70\bokehlicious_p4\bokehlicious_F?") 
 
 # INPUT_DIRS = [    
 #     r"I:\My Drive\DOF_benchmarking\inference\fl_36\bokehlicious_F7",
