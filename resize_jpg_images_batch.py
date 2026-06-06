@@ -19,7 +19,14 @@ import glob
 #              glob.glob(r"I:\My Drive\DOF_benchmarking\inference\fl_36\bokehlicious_p4\bokehlicious_F??") +\
 #              glob.glob(r"I:\My Drive\DOF_benchmarking\inference\fl_45\bokehlicious_p4\bokehlicious_F??") +\
 #              glob.glob(r"I:\My Drive\DOF_benchmarking\inference\fl_60\bokehlicious_p4\bokehlicious_F??") +\
-INPUT_DIRS =   glob.glob(r"I:\My Drive\DOF_benchmarking\inference\fl_70\bokehlicious_p4\bokehlicious_F?") 
+#INPUT_DIRS =   glob.glob(r"I:\My Drive\DOF_benchmarking\inference\fl_70\bokehlicious_p4\bokehlicious_F?.?") 
+
+APERTURES = [(28, 24), (36, 20), (45, 13), (60, 7), (70, 10)]
+#J:\My Drive\DOF_benchmarking\Scene3\fl_28\bokehlicious_fl_28_A_24
+INPUT_DIRS = [f"J:\My Drive\DOF_benchmarking\Scene3\\fl_{fl}\\bokehlicious_fl_{fl}_A_{A}" for (fl,A) in APERTURES] +\
+             [f"J:\My Drive\DOF_benchmarking\Scene5\\fl_{fl}\\bokehlicious_fl_{fl}_A_{A}" for (fl,A) in APERTURES] +\
+             [f"J:\My Drive\DOF_benchmarking\Scene8\\fl_{fl}\\bokehlicious_fl_{fl}_A_{A}" for (fl,A) in APERTURES]
+#[f"J:\My Drive\DOF_benchmarking\inference\\fl_{fl}\\bokehlicious_F{A}" for (fl,A) in APERTURES]
 
 # INPUT_DIRS = [    
 #     r"I:\My Drive\DOF_benchmarking\inference\fl_36\bokehlicious_F7",
