@@ -1,0 +1,56 @@
+\begin{table*}[!t]
+\centering
+\caption{
+Quantitative evaluation of defocus deblurring methods across five focal lengths and the overall average, inclduing inference execution time(s) per image. Higher PSNR/SSIM and lower LPIPS indicate better performance. Two motion-deblurring methods are stress-tested on defocus deblurring.\vspace{-10pt}}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{l|c c c c c|c c c c c|c c c c c|c c c c}
+\toprule
+\multirow{2}{*}{\textbf{Method}} &
+\multicolumn{5}{c|}{\textbf{PSNR} $\uparrow$} &
+\multicolumn{5}{c|}{\textbf{SSIM} $\uparrow$} &
+\multicolumn{5}{c|}{\textbf{LPIPS} $\downarrow$} &
+\multicolumn{4}{c}{\textbf{Average}} \\
+& fl28 & fl36 & fl45 & fl60 & fl70 &
+fl28 & fl36 & fl45 & fl60 & fl70 &
+fl28 & fl36 & fl45 & fl60 & fl70 &
+PSNR$\uparrow$ & SSIM$\uparrow$ & LPIPS$\downarrow$ & Time(s)$\downarrow$ \\
+\midrule
+\multicolumn{19}{l}{\textbf{Defocus Deblurring Methods}} \\
+\midrule
+Restormer (`22)~\cite{zamir2022restormer} &
+-- & -- & -- & -- & -- &
+-- & -- & -- & -- & -- &
+-- & -- & -- & -- & -- &
+-- & -- & -- & 6.36 \\
+
+NRKNet (`24)~\cite{quan2023neumann} &
+-- & -- & -- & -- & -- &
+-- & -- & -- & -- & -- &
+-- & -- & -- & -- & -- &
+-- & -- & -- & 0.35 \\
+
+ViTDeblur (`25)~\cite{li2022vitdeblur} &
+-- & -- & -- & -- & -- &
+-- & -- & -- & -- & -- &
+-- & -- & -- & -- & -- &
+-- & -- & -- & 12.91 \\
+
+\midrule
+\multicolumn{19}{l}{\textbf{Motion Deblurring Methods}} \\
+\midrule
+EVSSM (`25)~\cite{kong2025efficient} &
+-- & -- & -- & -- & -- &
+-- & -- & -- & -- & -- &
+-- & -- & -- & -- & -- &
+-- & -- & -- & - \\
+%
+FFTformer (`23)~\cite{kong2023efficient} &
+-- & -- & -- & -- & -- &
+-- & -- & -- & -- & -- &
+-- & -- & -- & -- & -- &
+-- & -- & -- & - \\
+\bottomrule
+\end{tabular}}
+\label{tab:deblur_results}
+\vspace{-10pt}
+\end{table*}

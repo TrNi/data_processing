@@ -1,0 +1,49 @@
+\begin{table*}[!h]
+\centering
+\caption{
+Quantitative evaluation of depth of field methods across five focal lengths and the overall average, including mean-opinion-rank (MOR) and inference execution time(s) per image on A100-40GB GPU. Higher PSNR, SSIM and lower LPIPS, MOR indicate better performance. \vspace{-10pt}}
+\resizebox{\textwidth}{!}{
+\begin{tabular}{l|c c c c c|c c c c c|c c c c c|c c c c c}
+\toprule
+\multirow{2}{*}{\textbf{Method}} &
+\multicolumn{5}{c|}{\textbf{PSNR} $\uparrow$} &
+\multicolumn{5}{c|}{\textbf{SSIM} $\uparrow$} &
+\multicolumn{5}{c|}{\textbf{LPIPS} $\downarrow$} &
+\multicolumn{5}{c}{\textbf{Average}} \\
+& fl28 & fl36 & fl45 & fl60 & fl70 &
+fl28 & fl36 & fl45 & fl60 & fl70 &
+fl28 & fl36 & fl45 & fl60 & fl70 &
+PSNR$\uparrow$ & SSIM$\uparrow$ & LPIPS$\downarrow$ & MOR$\downarrow$  &Time(s)$\downarrow$\\
+\midrule
+\multicolumn{20}{l}{\textbf{depth of field (DoF) Methods}} \\
+\midrule
+BokehDiff (`25)~\cite{zhu2025bokehdiff} &
+27.61 & 28.50 & 26.16 & 22.33 & 23.98 &
+0.89 & 0.90 & 0.85 & 0.76 & 0.80 &
+0.20 & 0.22 & 0.26 & 0.34 & 0.37 &
+25.73 & 0.84 & 0.28 & -- & 23.1+2e-6 \\
+%
+Dr.Bokeh (`24)~\cite{sheng2024dr} &
+27.90 & 28.55 & 26.92 & 25.03 & 24.82 &
+0.93 & 0.93 & 0.91 & 0.86 & 0.87 &
+0.19 & 0.20 & 0.23 & 0.29 & 0.27 &
+26.64 & 0.90 & 0.24 & -- & 120.4 \\
+%
+BokehMe (`22)~\cite{peng2022bokehme} &
+27.33 & 28.29 & 26.69 & 25.47 & 25.62 &
+0.90 & 0.91 & 0.88 & 0.87 & 0.86 &
+0.24 & 0.24 & 0.29 & 0.31 & 0.33 &
+26.68 & 0.88 & 0.28 & -- & 17.7+12.2 \\
+%
+Bokehlicious-2.8 (`25)~\cite{seizinger2025bokehlicious} &
+28.62 & 29.09 & 27.82 & -- & 26.50 &
+0.92 & 0.91 & 0.90 & -- & 0.88 &
+0.18 & 0.20 & 0.23 & -- & 0.29 &
+28.01 & 0.90 & 0.22 & -- & 17.8 \\
+
+%
+\bottomrule
+\end{tabular}}
+\label{tab:dof_results}
+\vspace{-1pt}
+\end{table*}
